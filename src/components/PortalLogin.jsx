@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../hooks/useLanguage'
 import { login, getCurrentUser, logout } from '../utils/auth'
 import { getDepartmentDisplayName } from '../utils/routing'
@@ -6,6 +7,7 @@ import { Shield, Lock, Building2 } from 'lucide-react'
 
 export default function PortalLogin({ department, roleKey, onSuccess, onBack }) {
   const { t, lang } = useLanguage()
+  const navigate = useNavigate()
   
   // Get the Amharic department name for this portal (as default/suggestion)
   const defaultDepartmentAm = getDepartmentDisplayName(department, 'am')
@@ -20,17 +22,18 @@ export default function PortalLogin({ department, roleKey, onSuccess, onBack }) 
     const checkExistingAuth = async () => {
       try {
         // Wait a bit for Supabase to restore session
-        await new Promise(resolve => setTimeout(resolve, 200))
+        await new Promise(resolve => setTimeout(resolve, 300))
         
         const user = await getCurrentUser()
         if (user) {
-          // User is already logged in, verify access and call onSuccess
-          if (user.portalUser.department === department || user.portalUser.isAdmin) {
-            onSuccess({
-              user: user.user,
-              session: user.session,
-              portalUser: user.portalUser
-            })
+          // User is already logged in, verify access and navigate
+          if (user.portalUser.department === department || (user.portalUser.isAdmin && department === 'Admin')) {
+            // Navigate directly to the portal page instead of calling onSuccess
+            if (user.portalUser.isAdmin) {
+              navigate('/portal/admin', { replace: true })
+            } else {
+              navigate(`/portal/department/${encodeURIComponent(user.portalUser.department)}/${user.portalUser.roleKey}`, { replace: true })
+            }
           } else {
             // User is logged in but doesn't have access to this portal
             setError(lang === 'am' ? 'ይህንን ፓንል ለመዳረስ ፍቃድ የለዎትም' : 'You do not have access to this portal')
@@ -43,7 +46,7 @@ export default function PortalLogin({ department, roleKey, onSuccess, onBack }) 
     
     checkExistingAuth()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [department, lang])
+  }, [department, lang, navigate])
 
   const handleSubmit = async (e) => {
     e.preventDefault()

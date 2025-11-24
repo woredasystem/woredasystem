@@ -38,7 +38,7 @@ function AppContent() {
       setAuthLoading(true)
       try {
         // Wait a bit for Supabase to restore session from storage
-        await new Promise(resolve => setTimeout(resolve, 100))
+        await new Promise(resolve => setTimeout(resolve, 200))
         
         const user = await getCurrentUser()
         if (user) {
@@ -47,20 +47,46 @@ function AppContent() {
           if (portalMode === 'internal') {
             if (user.portalUser.isAdmin) {
               setSelectedPortal({ type: 'admin' })
+              // If on /portal access page, redirect to admin portal
+              // But don't redirect if already on a valid portal route
+              if (location.pathname === '/portal' || location.pathname === '/portal/') {
+                navigate('/portal/admin', { replace: true })
+              }
             } else {
               setSelectedPortal({ 
                 type: 'department', 
                 department: user.portalUser.department,
                 roleKey: user.portalUser.roleKey 
               })
+              // If on /portal access page, redirect to department portal
+              // But don't redirect if already on a valid portal route
+              if (location.pathname === '/portal' || location.pathname === '/portal/') {
+                navigate(`/portal/department/${encodeURIComponent(user.portalUser.department)}/${user.portalUser.roleKey}`, { replace: true })
+              }
             }
           }
         } else {
           setAuth(null)
+          // Only redirect if on a protected portal route (not /portal or /portal/login)
+          const isProtectedRoute = portalMode === 'internal' && 
+            location.pathname !== '/portal' && 
+            location.pathname !== '/portal/' &&
+            !location.pathname.startsWith('/portal/login')
+          if (isProtectedRoute) {
+            navigate('/portal', { replace: true })
+          }
         }
       } catch (error) {
         console.error('Auth check error:', error)
         setAuth(null)
+        // Only redirect if on a protected portal route (not /portal or /portal/login)
+        const isProtectedRoute = portalMode === 'internal' && 
+          location.pathname !== '/portal' && 
+          location.pathname !== '/portal/' &&
+          !location.pathname.startsWith('/portal/login')
+        if (isProtectedRoute) {
+          navigate('/portal', { replace: true })
+        }
       } finally {
         setAuthLoading(false)
       }
@@ -76,12 +102,21 @@ function AppContent() {
         if (portalMode === 'internal') {
           setPortalMode('public')
           setSelectedPortal(null)
+          navigate('/portal', { replace: true })
         }
       } else if (event === 'SIGNED_IN' && session) {
         const user = await getCurrentUser()
         if (user) {
           setAuth(user)
           setAuthLoading(false)
+          // Navigate to appropriate portal if on /portal access page
+          if (location.pathname === '/portal') {
+            if (user.portalUser.isAdmin) {
+              navigate('/portal/admin', { replace: true })
+            } else {
+              navigate(`/portal/department/${encodeURIComponent(user.portalUser.department)}/${user.portalUser.roleKey}`, { replace: true })
+            }
+          }
         }
       } else if (event === 'TOKEN_REFRESHED' && session) {
         // Refresh user data when token is refreshed
@@ -89,13 +124,20 @@ function AppContent() {
         if (user) {
           setAuth(user)
         }
+      } else if (event === 'INITIAL_SESSION' && session) {
+        // Handle initial session restoration
+        const user = await getCurrentUser()
+        if (user) {
+          setAuth(user)
+          setAuthLoading(false)
+        }
       }
     })
 
     return () => {
       subscription.unsubscribe()
     }
-  }, [portalMode])
+  }, [portalMode, location.pathname, navigate])
 
   const handleLoginSuccess = async (authData) => {
     setAuth(authData)
@@ -230,17 +272,18 @@ function PortalLoginWrapper({ onSuccess }) {
 // Protected Route Component
 function ProtectedRoute({ children, requiredAuth, requiredAdmin, auth, onBack, authLoading }) {
   const navigate = useNavigate()
+  const location = useLocation()
   
   useEffect(() => {
     // Don't redirect while auth is still loading
     if (authLoading) return
     
     if (requiredAuth && !auth) {
-      navigate('/portal')
+      navigate('/portal', { replace: true })
     } else if (requiredAdmin && auth && !auth.portalUser.isAdmin) {
-      navigate('/portal')
+      navigate('/portal', { replace: true })
     }
-  }, [auth, authLoading, requiredAuth, requiredAdmin, navigate])
+  }, [auth, authLoading, requiredAuth, requiredAdmin, navigate, location.pathname])
 
   // Show loading state while checking auth
   if (authLoading) {
@@ -264,17 +307,18 @@ function ProtectedRoute({ children, requiredAuth, requiredAdmin, auth, onBack, a
 function ProtectedDepartmentRoute({ auth, onBack, authLoading }) {
   const { department, roleKey } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     // Don't redirect while auth is still loading
     if (authLoading) return
     
     if (!auth) {
-      navigate('/portal')
+      navigate('/portal', { replace: true })
     } else if (auth.portalUser.roleKey !== roleKey) {
-      navigate('/portal')
+      navigate('/portal', { replace: true })
     }
-  }, [auth, authLoading, roleKey, navigate])
+  }, [auth, authLoading, roleKey, navigate, location.pathname])
 
   // Show loading state while checking auth
   if (authLoading) {
