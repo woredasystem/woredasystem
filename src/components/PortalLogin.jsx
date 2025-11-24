@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../hooks/useLanguage'
 import { login, getCurrentUser, logout } from '../utils/auth'
+import { supabase } from '../lib/supabase'
 import { getDepartmentDisplayName } from '../utils/routing'
 import { Shield, Lock, Building2 } from 'lucide-react'
 
@@ -16,31 +17,69 @@ export default function PortalLogin({ department, roleKey, onSuccess, onBack }) 
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [checkingAuth, setCheckingAuth] = useState(true) // Track if we're checking for existing auth
 
-  // Check if user is already logged in on mount
+  // Check if user is already logged in on mount - redirect immediately if authenticated
   useEffect(() => {
     const checkExistingAuth = async () => {
+      setCheckingAuth(true)
       try {
-        // Wait a bit for Supabase to restore session
-        await new Promise(resolve => setTimeout(resolve, 300))
+        // Wait a bit for Supabase to restore session from storage
+        await new Promise(resolve => setTimeout(resolve, 800))
         
-        const user = await getCurrentUser()
-        if (user) {
-          // User is already logged in, verify access and navigate
-          if (user.portalUser.department === department || (user.portalUser.isAdmin && department === 'Admin')) {
-            // Navigate directly to the portal page instead of calling onSuccess
-            if (user.portalUser.isAdmin) {
-              navigate('/portal/admin', { replace: true })
-            } else {
-              navigate(`/portal/department/${encodeURIComponent(user.portalUser.department)}/${user.portalUser.roleKey}`, { replace: true })
+        // Check session directly first (faster)
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (session?.user) {
+          // Query portal_users directly using user_id from session
+          const { data: portalUser, error } = await supabase
+            .from('portal_users')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .single()
+          
+          if (portalUser && !error) {
+            const user = {
+              user: session.user,
+              session: session,
+              portalUser: {
+                id: portalUser.id,
+                email: portalUser.email,
+                username: portalUser.username,
+                fullName: portalUser.full_name,
+                department: portalUser.department,
+                roleKey: portalUser.role_key,
+                isAdmin: portalUser.is_admin
+              }
             }
-          } else {
-            // User is logged in but doesn't have access to this portal
-            setError(lang === 'am' ? 'ይህንን ፓንል ለመዳረስ ፍቃድ የለዎትም' : 'You do not have access to this portal')
+            
+            console.log('PortalLogin: User already authenticated:', user.portalUser)
+            
+            // User is already logged in, verify access and navigate immediately
+            const hasAccess = user.portalUser.department === department || 
+                             (user.portalUser.isAdmin && department === 'Admin') ||
+                             user.portalUser.isAdmin
+            
+            if (hasAccess) {
+              console.log('Redirecting authenticated user to portal')
+              // Navigate directly to the portal page
+              if (user.portalUser.isAdmin) {
+                navigate('/portal/admin', { replace: true })
+              } else {
+                navigate(`/portal/department/${encodeURIComponent(user.portalUser.department)}/${user.portalUser.roleKey}`, { replace: true })
+              }
+              return // Exit early, don't show login form
+            } else {
+              // User is logged in but doesn't have access to this portal
+              console.log('User logged in but no access to this portal')
+              setError(lang === 'am' ? 'ይህንን ፓንል ለመዳረስ ፍቃድ የለዎትም' : 'You do not have access to this portal')
+            }
           }
         }
       } catch (err) {
         console.error('Error checking existing auth:', err)
+      } finally {
+        setCheckingAuth(false)
       }
     }
     
@@ -54,35 +93,41 @@ export default function PortalLogin({ department, roleKey, onSuccess, onBack }) 
     setLoading(true)
 
     try {
-      // If user is already logged in with a different account, sign them out first
-      const existingUser = await getCurrentUser()
-      if (existingUser && existingUser.portalUser.department !== department && !existingUser.portalUser.isAdmin) {
-        await logout()
+      // Check if user is already logged in with a different account
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        const { data: existingPortalUser } = await supabase
+          .from('portal_users')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single()
+        
+        if (existingPortalUser && existingPortalUser.department !== department && !existingPortalUser.is_admin) {
+          await logout()
+        }
       }
       
       const result = await login(departmentName.trim(), password)
       
       if (result.success) {
+        setLoading(false) // Stop loading immediately
+        
         // Verify user has access to this department
         if (result.authData.portalUser.department !== department && !result.authData.portalUser.isAdmin) {
           setError(lang === 'am' ? 'ይህንን ፓንል ለመዳረስ ፍቃድ የለዎትም' : 'You do not have access to this portal')
-          setLoading(false)
           return
         }
         
-        // For admin, allow access to any portal
-        if (result.authData.portalUser.isAdmin && department === 'Admin') {
-          onSuccess(result.authData)
-          return
-        }
-        
-        // For department portals, verify department matches
-        if (result.authData.portalUser.department === department) {
-          onSuccess(result.authData)
+        // Navigate directly instead of relying on onSuccess callback
+        // This ensures navigation happens even if auth state change handler fails
+        if (result.authData.portalUser.isAdmin) {
+          navigate('/portal/admin', { replace: true })
         } else {
-          setError(lang === 'am' ? 'ይህንን ፓንል ለመዳረስ ፍቃድ የለዎትም' : 'You do not have access to this portal')
-          setLoading(false)
+          navigate(`/portal/department/${encodeURIComponent(result.authData.portalUser.department)}/${result.authData.portalUser.roleKey}`, { replace: true })
         }
+        
+        // Also call onSuccess for state management
+        onSuccess(result.authData)
       } else {
         setError(result.error || (lang === 'am' ? 'የተሳሳተ የመግቢያ መረጃ' : 'Invalid credentials'))
         setLoading(false)
@@ -92,6 +137,22 @@ export default function PortalLogin({ department, roleKey, onSuccess, onBack }) 
       setError(error.message || (lang === 'am' ? 'ስህተት ተፈጥሯል። እባክዎ እንደገና ይሞክሩ' : 'An error occurred. Please try again'))
       setLoading(false)
     }
+  }
+
+  // Show loading screen while checking if user is already authenticated
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-mayor-deep-blue via-mayor-royal-blue to-mayor-highlight-blue flex items-center justify-center p-6">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-full mb-4 animate-pulse">
+            <Shield className="w-8 h-8 text-white" />
+          </div>
+          <p className="text-white font-amharic text-lg">
+            {lang === 'am' ? 'በመጫን ላይ...' : 'Loading...'}
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -172,47 +172,105 @@ export async function logout() {
   await supabase.auth.signOut()
 }
 
+// Track if getCurrentUser is already running to prevent concurrent calls
+let getCurrentUserPromise = null
+
 export async function getCurrentUser() {
   try {
-    // First check if there's an active session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    // If already running, return the existing promise
+    if (getCurrentUserPromise) {
+      console.log('getCurrentUser: Already running, reusing promise')
+      return await getCurrentUserPromise
+    }
     
-    if (sessionError || !session) {
-      return null
-    }
-
-    // Get the user from the session
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    console.log('getCurrentUser: Starting...')
     
-    if (userError || !user) {
-      return null
-    }
+    // Create the promise and store it
+    getCurrentUserPromise = (async () => {
+      try {
+        // First check if there's an active session
+        console.log('getCurrentUser: Calling getSession...')
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        console.log('getCurrentUser: Session check:', { hasSession: !!session, error: sessionError?.message })
+        
+        if (sessionError) {
+          console.error('getCurrentUser: Session error:', sessionError)
+          return null
+        }
+        
+        if (!session) {
+          console.log('getCurrentUser: No session found')
+          return null
+        }
 
-    // Get portal user details using user_id
-    const { data: portalUser, error: portalUserError } = await supabase
-      .from('portal_users')
-      .select('*')
-      .eq('user_id', user.id)
-      .single()
+        // Get the user from the session
+        console.log('getCurrentUser: Calling getUser...')
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        console.log('getCurrentUser: User check:', { hasUser: !!user, userId: user?.id, error: userError?.message })
+        
+        if (userError) {
+          console.error('getCurrentUser: User error:', userError)
+          return null
+        }
+        
+        if (!user) {
+          console.log('getCurrentUser: No user found')
+          return null
+        }
 
-    if (portalUserError || !portalUser) {
-      return null
-    }
+        // Get portal user details using user_id
+        console.log('getCurrentUser: Fetching portal user for user_id:', user.id)
+        const { data: portalUser, error: portalUserError } = await supabase
+          .from('portal_users')
+          .select('*')
+          .eq('user_id', user.id)
+          .single()
 
-    return {
-      user,
-      session,
-      portalUser: {
-        id: portalUser.id,
-        email: portalUser.email,
-        username: portalUser.username,
-        fullName: portalUser.full_name,
-        department: portalUser.department,
-        roleKey: portalUser.role_key,
-        isAdmin: portalUser.is_admin
+        console.log('getCurrentUser: Portal user query:', { hasPortalUser: !!portalUser, error: portalUserError?.message })
+
+        if (portalUserError) {
+          console.error('getCurrentUser: Portal user error:', portalUserError)
+          return null
+        }
+        
+        if (!portalUser) {
+          console.log('getCurrentUser: No portal user found')
+          return null
+        }
+
+        const result = {
+          user,
+          session,
+          portalUser: {
+            id: portalUser.id,
+            email: portalUser.email,
+            username: portalUser.username,
+            fullName: portalUser.full_name,
+            department: portalUser.department,
+            roleKey: portalUser.role_key,
+            isAdmin: portalUser.is_admin
+          }
+        }
+        
+        console.log('getCurrentUser: Success:', { userId: user.id, department: portalUser.department, roleKey: portalUser.role_key })
+        return result
+      } finally {
+        // Clear the promise when done
+        getCurrentUserPromise = null
       }
-    }
+    })()
+    
+    // Add timeout
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => {
+        getCurrentUserPromise = null
+        reject(new Error('getCurrentUser timeout'))
+      }, 10000) // 10 second timeout
+    )
+    
+    return await Promise.race([getCurrentUserPromise, timeoutPromise])
   } catch (error) {
+    getCurrentUserPromise = null
     console.error('Get current user error:', error)
     return null
   }
