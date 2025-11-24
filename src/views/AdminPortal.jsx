@@ -1,0 +1,681 @@
+import { useState, useEffect } from 'react'
+import { useLanguage } from '../hooks/useLanguage'
+import { supabase } from '../lib/supabase'
+import { getDepartmentDisplayName } from '../utils/routing'
+import { gregorianToEthiopian, ethiopianMonths, ethiopianMonthsEn } from '../utils/ethiopianCalendar'
+import { logout } from '../utils/auth'
+import { ArrowLeft, BarChart3, AlertTriangle, Users, Calendar, LogOut, Edit, Download, FileText, FileSpreadsheet, TrendingUp, Filter, Search } from 'lucide-react'
+import AppointmentReschedule from '../components/AppointmentReschedule'
+import { generateComplaintPDF } from '../utils/pdfGenerator'
+import { exportComplaintsToCSV, exportAppointmentsToCSV, exportComplaintsToPDF, exportAppointmentsToPDF } from '../utils/exportUtils'
+
+export default function AdminPortal({ onBack }) {
+  const { t, lang } = useLanguage()
+  const [complaints, setComplaints] = useState([])
+  const [appointments, setAppointments] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [selectedAppointment, setSelectedAppointment] = useState(null)
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false)
+  const [activeTab, setActiveTab] = useState('analytics') // 'analytics', 'complaints', 'appointments'
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [departmentFilter, setDepartmentFilter] = useState('all')
+  
+  const [stats, setStats] = useState({
+    totalComplaints: 0,
+    pendingComplaints: 0,
+    escalatedComplaints: 0,
+    resolvedComplaints: 0,
+    totalAppointments: 0,
+    todayAppointments: 0,
+    completedAppointments: 0,
+    missedAppointments: 0,
+    confirmedAppointments: 0
+  })
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      // Fetch all complaints
+      const { data: complaintsData, error: complaintsError } = await supabase
+        .from('complaints')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (complaintsError) throw complaintsError
+
+      // Fetch all appointments
+      const { data: appointmentsData, error: appointmentsError } = await supabase
+        .from('appointments')
+        .select('*')
+        .order('appointment_date', { ascending: true })
+
+      if (appointmentsError) throw appointmentsError
+
+      setComplaints(complaintsData || [])
+      setAppointments(appointmentsData || [])
+
+      // Calculate stats
+      const total = complaintsData?.length || 0
+      const pending = complaintsData?.filter(c => c.status === 'Pending').length || 0
+      const escalated = complaintsData?.filter(c => c.status === 'Escalated').length || 0
+      const resolved = complaintsData?.filter(c => c.status === 'Resolved').length || 0
+      
+      const totalApps = appointmentsData?.length || 0
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      
+      const todayApps = appointmentsData?.filter(a => {
+        const appDate = new Date(a.appointment_date)
+        return appDate >= today && appDate < tomorrow
+      }).length || 0
+      
+      const completed = appointmentsData?.filter(a => a.status === 'Completed').length || 0
+      const missed = appointmentsData?.filter(a => a.status === 'Missed').length || 0
+      const confirmed = appointmentsData?.filter(a => a.status === 'Confirmed').length || 0
+
+      setStats({
+        totalComplaints: total,
+        pendingComplaints: pending,
+        escalatedComplaints: escalated,
+        resolvedComplaints: resolved,
+        totalAppointments: totalApps,
+        todayAppointments: todayApps,
+        completedAppointments: completed,
+        missedAppointments: missed,
+        confirmedAppointments: confirmed
+      })
+    } catch (error) {
+      console.error('Error fetching data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Filter complaints
+  const filteredComplaints = complaints.filter(complaint => {
+    const matchesSearch = !searchTerm || 
+      complaint.ticket_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      complaint.complainant_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      complaint.complainant_phone?.includes(searchTerm) ||
+      complaint.details?.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesStatus = statusFilter === 'all' || complaint.status === statusFilter
+    const matchesDept = departmentFilter === 'all' || 
+      (complaint.assigned_department || complaint.department) === departmentFilter
+    
+    return matchesSearch && matchesStatus && matchesDept
+  })
+
+  // Filter appointments
+  const filteredAppointments = appointments.filter(appointment => {
+    const matchesSearch = !searchTerm ||
+      appointment.unique_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      appointment.citizen_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      appointment.citizen_phone?.includes(searchTerm) ||
+      appointment.service_type?.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesStatus = statusFilter === 'all' || appointment.status === statusFilter
+    const matchesDept = departmentFilter === 'all' || appointment.assigned_department === departmentFilter
+    
+    return matchesSearch && matchesStatus && matchesDept
+  })
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A'
+    const gregorianDate = new Date(dateString)
+    const ethDate = gregorianToEthiopian(gregorianDate)
+    const monthName = lang === 'am' 
+      ? ethiopianMonths[ethDate.month - 1]
+      : ethiopianMonthsEn[ethDate.month - 1]
+    return lang === 'am'
+      ? `${ethDate.day} ${monthName} ${ethDate.year}`
+      : `${monthName} ${ethDate.day}, ${ethDate.year}`
+  }
+
+  // Format date with time
+  const formatDateTime = (dateString) => {
+    if (!dateString) return 'N/A'
+    const gregorianDate = new Date(dateString)
+    const ethDate = gregorianToEthiopian(gregorianDate)
+    const hour = gregorianDate.getUTCHours()
+    const minute = gregorianDate.getUTCMinutes()
+    
+    let hourDisplay = hour
+    let period = ''
+    if (hour >= 3 && hour <= 7) {
+      period = lang === 'am' ? 'ጠዋት' : 'AM'
+    } else if (hour >= 8 && hour <= 11) {
+      period = lang === 'am' ? 'ከሰአት' : 'PM'
+    } else {
+      let hour12 = hour
+      if (hour === 0) {
+        hour12 = 12
+        period = lang === 'am' ? 'ማታ' : 'AM'
+      } else if (hour < 12) {
+        hour12 = hour
+        period = lang === 'am' ? 'ጠዋት' : 'AM'
+      } else if (hour === 12) {
+        hour12 = 12
+        period = lang === 'am' ? 'ከሰአት' : 'PM'
+      } else {
+        hour12 = hour - 12
+        period = lang === 'am' ? 'ከሰአት' : 'PM'
+      }
+      hourDisplay = hour12
+    }
+    
+    hourDisplay = hourDisplay.toString().padStart(2, '0')
+    const minuteDisplay = minute.toString().padStart(2, '0')
+    const monthName = lang === 'am' 
+      ? ethiopianMonths[ethDate.month - 1]
+      : ethiopianMonthsEn[ethDate.month - 1]
+    
+    return lang === 'am'
+      ? `${ethDate.day} ${monthName} ${ethDate.year} ${hourDisplay}:${minuteDisplay} ${period}`
+      : `${monthName} ${ethDate.day}, ${ethDate.year} ${hourDisplay}:${minuteDisplay} ${period}`
+  }
+
+  // Get unique departments
+  const departments = [...new Set([
+    ...complaints.map(c => c.assigned_department || c.department).filter(Boolean),
+    ...appointments.map(a => a.assigned_department).filter(Boolean)
+  ])]
+
+  // Group complaints by department for analytics
+  const complaintsByDepartment = complaints.reduce((acc, complaint) => {
+    const dept = complaint.assigned_department || complaint.department || 'Unknown'
+    if (!acc[dept]) acc[dept] = { total: 0, pending: 0, resolved: 0, escalated: 0 }
+    acc[dept].total++
+    if (complaint.status === 'Pending') acc[dept].pending++
+    if (complaint.status === 'Resolved') acc[dept].resolved++
+    if (complaint.status === 'Escalated') acc[dept].escalated++
+    return acc
+  }, {})
+
+  // Get status color
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Completed': return 'bg-green-600'
+      case 'Confirmed': return 'bg-mayor-royal-blue'
+      case 'Missed': return 'bg-red-600'
+      case 'Resolved': return 'bg-green-600'
+      case 'Pending': return 'bg-yellow-500'
+      case 'Escalated': return 'bg-red-600'
+      case 'In Progress': return 'bg-blue-500'
+      default: return 'bg-gray-500'
+    }
+  }
+
+  // Get status text
+  const getStatusText = (status) => {
+    const statusMap = {
+      'Confirmed': lang === 'am' ? 'የተረጋገጠ' : 'Confirmed',
+      'Completed': lang === 'am' ? 'ተጠናቋል' : 'Completed',
+      'Missed': lang === 'am' ? 'ተቆርጧል' : 'Missed',
+      'Pending': lang === 'am' ? 'በመጠባበቅ ላይ' : 'Pending',
+      'Resolved': lang === 'am' ? 'ተፈትቷል' : 'Resolved',
+      'Escalated': lang === 'am' ? 'ወደ ላይ ተላልፏል' : 'Escalated',
+      'In Progress': lang === 'am' ? 'በሂደት ላይ' : 'In Progress'
+    }
+    return statusMap[status] || status
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <p className="text-mayor-navy font-amharic">
+          {lang === 'am' ? 'በመጫን ላይ...' : 'Loading...'}
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-white">
+      <div className="p-6 pt-24">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-6">
+            <button
+              onClick={onBack}
+              className="gov-button px-4 py-2 flex items-center gap-2"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span>{t('back')}</span>
+            </button>
+            <button
+              onClick={() => {
+                logout()
+                onBack()
+              }}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-gov flex items-center gap-2 transition-colors font-amharic"
+            >
+              <LogOut className="w-5 h-5" />
+              <span>{lang === 'am' ? 'ውጣ' : 'Logout'}</span>
+            </button>
+          </div>
+
+          <div className="gov-header rounded-gov-lg p-6 mb-8">
+            <h1 className="text-4xl font-bold mb-2 font-amharic">
+              {lang === 'am' ? 'የአስተዳደር ፓንል' : 'Admin Portal'}
+            </h1>
+            <p className="text-white/90 font-amharic">
+              {lang === 'am' ? 'የስርዓቱ አጠቃላይ እይታ' : 'System Overview'}
+            </p>
+            <div className="w-24 h-1 bg-white/30 rounded-full mt-2"></div>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex gap-2 mb-6 border-b border-mayor-gray-divider">
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`px-6 py-3 font-semibold font-amharic transition-colors border-b-2 ${
+                activeTab === 'analytics'
+                  ? 'border-mayor-royal-blue text-mayor-royal-blue'
+                  : 'border-transparent text-mayor-navy/70 hover:text-mayor-navy'
+              }`}
+            >
+              <TrendingUp className="w-4 h-4 inline mr-2" />
+              {lang === 'am' ? 'ትንተና' : 'Analytics'}
+            </button>
+            <button
+              onClick={() => setActiveTab('complaints')}
+              className={`px-6 py-3 font-semibold font-amharic transition-colors border-b-2 ${
+                activeTab === 'complaints'
+                  ? 'border-mayor-royal-blue text-mayor-royal-blue'
+                  : 'border-transparent text-mayor-navy/70 hover:text-mayor-navy'
+              }`}
+            >
+              <FileText className="w-4 h-4 inline mr-2" />
+              {lang === 'am' ? 'ቅሬታዎች' : 'Complaints'} ({complaints.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('appointments')}
+              className={`px-6 py-3 font-semibold font-amharic transition-colors border-b-2 ${
+                activeTab === 'appointments'
+                  ? 'border-mayor-royal-blue text-mayor-royal-blue'
+                  : 'border-transparent text-mayor-navy/70 hover:text-mayor-navy'
+              }`}
+            >
+              <Calendar className="w-4 h-4 inline mr-2" />
+              {lang === 'am' ? 'ቀጠሮዎች' : 'Appointments'} ({appointments.length})
+            </button>
+          </div>
+
+          {/* Analytics Tab */}
+          {activeTab === 'analytics' && (
+            <div className="space-y-6">
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="gov-card p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-mayor-royal-blue/10 rounded-gov-lg">
+                      <BarChart3 className="w-8 h-8 text-mayor-royal-blue" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-mayor-navy/70 font-amharic">{lang === 'am' ? 'ጠቅላላ ቅሬታዎች' : 'Total Complaints'}</p>
+                      <p className="text-3xl font-bold text-mayor-navy">{stats.totalComplaints}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="gov-card p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-yellow-100 rounded-gov-lg">
+                      <AlertTriangle className="w-8 h-8 text-yellow-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-mayor-navy/70 font-amharic">{lang === 'am' ? 'በመጠባበቅ ላይ' : 'Pending'}</p>
+                      <p className="text-3xl font-bold text-mayor-navy">{stats.pendingComplaints}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="gov-card p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-green-100 rounded-gov-lg">
+                      <Users className="w-8 h-8 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-mayor-navy/70 font-amharic">{lang === 'am' ? 'ተፈትቷል' : 'Resolved'}</p>
+                      <p className="text-3xl font-bold text-mayor-navy">{stats.resolvedComplaints}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="gov-card p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-mayor-highlight-blue/10 rounded-gov-lg">
+                      <Calendar className="w-8 h-8 text-mayor-highlight-blue" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-mayor-navy/70 font-amharic">{lang === 'am' ? 'ጠቅላላ ቀጠሮዎች' : 'Total Appointments'}</p>
+                      <p className="text-3xl font-bold text-mayor-navy">{stats.totalAppointments}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Charts */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Complaints by Department */}
+                <div className="gov-card p-6">
+                  <h3 className="text-xl font-bold text-mayor-navy mb-4 font-amharic">
+                    {lang === 'am' ? 'ቅሬታዎች በየስራ ክፍሉ' : 'Complaints by Department'}
+                  </h3>
+                  <div className="space-y-4">
+                    {Object.entries(complaintsByDepartment).map(([dept, data]) => {
+                      const percentage = stats.totalComplaints > 0 
+                        ? (data.total / stats.totalComplaints) * 100 
+                        : 0
+                      return (
+                        <div key={dept}>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-semibold text-mayor-navy font-amharic text-sm">
+                              {getDepartmentDisplayName(dept, lang)}
+                            </span>
+                            <span className="text-mayor-navy/70 text-sm">{data.total} ({percentage.toFixed(1)}%)</span>
+                          </div>
+                          <div className="w-full bg-mayor-gray-divider rounded-full h-3">
+                            <div
+                              className="bg-mayor-royal-blue h-3 rounded-full transition-all"
+                              style={{ width: `${percentage}%` }}
+                            ></div>
+                          </div>
+                          <div className="flex gap-4 mt-1 text-xs text-mayor-navy/60 font-amharic">
+                            <span>{lang === 'am' ? 'በመጠባበቅ' : 'Pending'}: {data.pending}</span>
+                            <span>{lang === 'am' ? 'ተፈትቷል' : 'Resolved'}: {data.resolved}</span>
+                            <span>{lang === 'am' ? 'ወደ ላይ' : 'Escalated'}: {data.escalated}</span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Appointments Status */}
+                <div className="gov-card p-6">
+                  <h3 className="text-xl font-bold text-mayor-navy mb-4 font-amharic">
+                    {lang === 'am' ? 'የቀጠሮዎች ሁኔታ' : 'Appointments Status'}
+                  </h3>
+                  <div className="space-y-4">
+                    {[
+                      { label: lang === 'am' ? 'የተረጋገጠ' : 'Confirmed', value: stats.confirmedAppointments, color: 'bg-mayor-royal-blue' },
+                      { label: lang === 'am' ? 'ተጠናቋል' : 'Completed', value: stats.completedAppointments, color: 'bg-green-600' },
+                      { label: lang === 'am' ? 'ተቆርጧል' : 'Missed', value: stats.missedAppointments, color: 'bg-red-600' }
+                    ].map((item) => {
+                      const percentage = stats.totalAppointments > 0 
+                        ? (item.value / stats.totalAppointments) * 100 
+                        : 0
+                      return (
+                        <div key={item.label}>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-semibold text-mayor-navy font-amharic text-sm">{item.label}</span>
+                            <span className="text-mayor-navy/70 text-sm">{item.value} ({percentage.toFixed(1)}%)</span>
+                          </div>
+                          <div className="w-full bg-mayor-gray-divider rounded-full h-3">
+                            <div
+                              className={`${item.color} h-3 rounded-full transition-all`}
+                              style={{ width: `${percentage}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Complaints Tab */}
+          {activeTab === 'complaints' && (
+            <div className="space-y-4">
+              {/* Filters and Export */}
+              <div className="gov-card p-4">
+                <div className="flex flex-col md:flex-row gap-4 items-center">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-mayor-navy/40 w-5 h-5" />
+                    <input
+                      type="text"
+                      placeholder={lang === 'am' ? 'ፈልግ...' : 'Search...'}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 rounded-gov border border-mayor-gray-divider focus:outline-none focus:ring-2 focus:ring-mayor-royal-blue font-amharic"
+                    />
+                  </div>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="px-4 py-2 rounded-gov border border-mayor-gray-divider focus:outline-none focus:ring-2 focus:ring-mayor-royal-blue font-amharic"
+                  >
+                    <option value="all">{lang === 'am' ? 'ሁሉም ሁኔታዎች' : 'All Statuses'}</option>
+                    <option value="Pending">{lang === 'am' ? 'በመጠባበቅ ላይ' : 'Pending'}</option>
+                    <option value="In Progress">{lang === 'am' ? 'በሂደት ላይ' : 'In Progress'}</option>
+                    <option value="Resolved">{lang === 'am' ? 'ተፈትቷል' : 'Resolved'}</option>
+                    <option value="Escalated">{lang === 'am' ? 'ወደ ላይ ተላልፏል' : 'Escalated'}</option>
+                  </select>
+                  <select
+                    value={departmentFilter}
+                    onChange={(e) => setDepartmentFilter(e.target.value)}
+                    className="px-4 py-2 rounded-gov border border-mayor-gray-divider focus:outline-none focus:ring-2 focus:ring-mayor-royal-blue font-amharic"
+                  >
+                    <option value="all">{lang === 'am' ? 'ሁሉም ክፍሎች' : 'All Departments'}</option>
+                    {departments.map(dept => (
+                      <option key={dept} value={dept}>{getDepartmentDisplayName(dept, lang)}</option>
+                    ))}
+                  </select>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => exportComplaintsToPDF(filteredComplaints, lang)}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-gov flex items-center gap-2 font-amharic"
+                    >
+                      <FileText className="w-4 h-4" />
+                      PDF
+                    </button>
+                    <button
+                      onClick={() => exportComplaintsToCSV(filteredComplaints, lang)}
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-gov flex items-center gap-2 font-amharic"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" />
+                      CSV
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Complaints Table */}
+              <div className="gov-card overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-mayor-royal-blue text-white">
+                      <tr>
+                        <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'ቲኬት' : 'Ticket'}</th>
+                        <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'ስም' : 'Name'}</th>
+                        <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'ስልክ' : 'Phone'}</th>
+                        <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'የስራ ክፍል' : 'Department'}</th>
+                        <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'ሁኔታ' : 'Status'}</th>
+                        <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'ደረጃ' : 'Level'}</th>
+                        <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'ቀን' : 'Date'}</th>
+                        <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'ድርጊት' : 'Action'}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredComplaints.map((complaint) => (
+                        <tr key={complaint.id} className="border-b border-mayor-gray-divider hover:bg-mayor-gray-divider/20">
+                          <td className="px-4 py-3 font-mono text-sm">{complaint.ticket_number}</td>
+                          <td className="px-4 py-3 font-amharic">{complaint.complainant_name}</td>
+                          <td className="px-4 py-3">{complaint.complainant_phone}</td>
+                          <td className="px-4 py-3 font-amharic text-sm">
+                            {getDepartmentDisplayName(complaint.assigned_department || complaint.department, lang)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 rounded-gov text-white text-xs font-amharic ${getStatusColor(complaint.status)}`}>
+                              {getStatusText(complaint.status)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center">{complaint.escalation_level || 1}</td>
+                          <td className="px-4 py-3 font-amharic text-sm">{formatDate(complaint.created_at)}</td>
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() => generateComplaintPDF(complaint, lang)}
+                              className="p-1 text-mayor-royal-blue hover:text-mayor-highlight-blue"
+                              title={lang === 'am' ? 'PDF ያውርዱ' : 'Download PDF'}
+                            >
+                              <Download className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {filteredComplaints.length === 0 && (
+                    <div className="p-8 text-center text-mayor-navy/60 font-amharic">
+                      {lang === 'am' ? 'ቅሬታ አልተገኘም' : 'No complaints found'}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Appointments Tab */}
+          {activeTab === 'appointments' && (
+            <div className="space-y-4">
+              {/* Filters and Export */}
+              <div className="gov-card p-4">
+                <div className="flex flex-col md:flex-row gap-4 items-center">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-mayor-navy/40 w-5 h-5" />
+                    <input
+                      type="text"
+                      placeholder={lang === 'am' ? 'ፈልግ...' : 'Search...'}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 rounded-gov border border-mayor-gray-divider focus:outline-none focus:ring-2 focus:ring-mayor-royal-blue font-amharic"
+                    />
+                  </div>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="px-4 py-2 rounded-gov border border-mayor-gray-divider focus:outline-none focus:ring-2 focus:ring-mayor-royal-blue font-amharic"
+                  >
+                    <option value="all">{lang === 'am' ? 'ሁሉም ሁኔታዎች' : 'All Statuses'}</option>
+                    <option value="Confirmed">{lang === 'am' ? 'የተረጋገጠ' : 'Confirmed'}</option>
+                    <option value="Completed">{lang === 'am' ? 'ተጠናቋል' : 'Completed'}</option>
+                    <option value="Missed">{lang === 'am' ? 'ተቆርጧል' : 'Missed'}</option>
+                  </select>
+                  <select
+                    value={departmentFilter}
+                    onChange={(e) => setDepartmentFilter(e.target.value)}
+                    className="px-4 py-2 rounded-gov border border-mayor-gray-divider focus:outline-none focus:ring-2 focus:ring-mayor-royal-blue font-amharic"
+                  >
+                    <option value="all">{lang === 'am' ? 'ሁሉም ክፍሎች' : 'All Departments'}</option>
+                    {departments.map(dept => (
+                      <option key={dept} value={dept}>{getDepartmentDisplayName(dept, lang)}</option>
+                    ))}
+                  </select>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => exportAppointmentsToPDF(filteredAppointments, lang)}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-gov flex items-center gap-2 font-amharic"
+                    >
+                      <FileText className="w-4 h-4" />
+                      PDF
+                    </button>
+                    <button
+                      onClick={() => exportAppointmentsToCSV(filteredAppointments, lang)}
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-gov flex items-center gap-2 font-amharic"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" />
+                      CSV
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Appointments Table */}
+              <div className="gov-card overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-mayor-royal-blue text-white">
+                      <tr>
+                        <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'ኮድ' : 'Code'}</th>
+                        <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'ስም' : 'Name'}</th>
+                        <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'ስልክ' : 'Phone'}</th>
+                        <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'የአገልግሎት አይነት' : 'Service'}</th>
+                        <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'የቀጠሮ ቀን' : 'Date'}</th>
+                        <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'የስራ ክፍል' : 'Department'}</th>
+                        <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'ሁኔታ' : 'Status'}</th>
+                        <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'ድርጊት' : 'Action'}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredAppointments.map((appointment) => (
+                        <tr key={appointment.id} className="border-b border-mayor-gray-divider hover:bg-mayor-gray-divider/20">
+                          <td className="px-4 py-3 font-mono text-sm">{appointment.unique_code}</td>
+                          <td className="px-4 py-3 font-amharic">{appointment.citizen_name}</td>
+                          <td className="px-4 py-3">{appointment.citizen_phone}</td>
+                          <td className="px-4 py-3 font-amharic text-sm">{appointment.service_type}</td>
+                          <td className="px-4 py-3 font-amharic text-sm">{formatDateTime(appointment.appointment_date)}</td>
+                          <td className="px-4 py-3 font-amharic text-sm">
+                            {getDepartmentDisplayName(appointment.assigned_department, lang)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 rounded-gov text-white text-xs font-amharic ${getStatusColor(appointment.status)}`}>
+                              {getStatusText(appointment.status)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {appointment.status === 'Confirmed' && (
+                              <button
+                                onClick={() => {
+                                  setSelectedAppointment(appointment)
+                                  setShowRescheduleModal(true)
+                                }}
+                                className="p-1 text-mayor-royal-blue hover:text-mayor-highlight-blue"
+                                title={lang === 'am' ? 'እንደገና ይዘጋጁ' : 'Reschedule'}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {filteredAppointments.length === 0 && (
+                    <div className="p-8 text-center text-mayor-navy/60 font-amharic">
+                      {lang === 'am' ? 'ቀጠሮ አልተገኘም' : 'No appointments found'}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Reschedule Modal */}
+          {showRescheduleModal && selectedAppointment && (
+            <AppointmentReschedule
+              appointment={selectedAppointment}
+              onClose={() => {
+                setShowRescheduleModal(false)
+                setSelectedAppointment(null)
+              }}
+              onSuccess={() => {
+                fetchData()
+                setShowRescheduleModal(false)
+                setSelectedAppointment(null)
+              }}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

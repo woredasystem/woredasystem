@@ -1,0 +1,80 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@400;500;600;700&family=Noto+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-english antialiased bg-white text-mayor-navy;
+  }
+  
+  .font-amharic {
+    font-family: 'Noto Sans Ethiopic', 'Noto Sans', sans-serif;
+}
+
+  .font-english {
+    font-family: 'Noto Sans', 'Inter', 'Roboto', sans-serif;
+  }
+}
+
+@layer utilities {
+  .gov-card {
+    @apply bg-white border border-mayor-gray-divider rounded-gov-xl shadow-gov;
+}
+  
+  .gov-header {
+    @apply bg-mayor-deep-blue text-white font-semibold;
+}
+
+  .gov-button {
+    @apply bg-mayor-royal-blue hover:bg-mayor-highlight-blue text-white font-medium rounded-gov transition-colors duration-200;
+  }
+  
+  .gov-section {
+    @apply bg-white border-t border-mayor-gray-divider;
+  }
+}
+
+/* App-specific styles */
+.App {
+  min-height: 100vh;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Toast animations */
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  }
+
+::-webkit-scrollbar-thumb {
+  background: #1565C0;
+  border-radius: 5px;
+  }
+
+::-webkit-scrollbar-thumb:hover {
+  background: #1E88E5;
+}
