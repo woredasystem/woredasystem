@@ -9,7 +9,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    storage: window.sessionStorage, // Use sessionStorage instead of localStorage for better cache control
+    storage: window.localStorage, // Use localStorage for session persistence across page refreshes
     flowType: 'pkce'
   },
   global: {

@@ -21,6 +21,7 @@ function AppContent() {
   const [portalMode, setPortalMode] = useState('public') // 'public' or 'internal'
   const [selectedPortal, setSelectedPortal] = useState(null)
   const [auth, setAuth] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true) // Track auth loading state
   
   // Determine portal mode from path
   useEffect(() => {
@@ -34,19 +35,34 @@ function AppContent() {
   useEffect(() => {
     // Check if user is already authenticated
     const checkAuth = async () => {
-      const user = await getCurrentUser()
-      if (user && portalMode === 'internal') {
-        setAuth(user)
-        // Restore portal access
-        if (user.portalUser.isAdmin) {
-          setSelectedPortal({ type: 'admin' })
+      setAuthLoading(true)
+      try {
+        // Wait a bit for Supabase to restore session from storage
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
+        const user = await getCurrentUser()
+        if (user) {
+          setAuth(user)
+          // Restore portal access if in portal mode
+          if (portalMode === 'internal') {
+            if (user.portalUser.isAdmin) {
+              setSelectedPortal({ type: 'admin' })
+            } else {
+              setSelectedPortal({ 
+                type: 'department', 
+                department: user.portalUser.department,
+                roleKey: user.portalUser.roleKey 
+              })
+            }
+          }
         } else {
-          setSelectedPortal({ 
-            type: 'department', 
-            department: user.portalUser.department,
-            roleKey: user.portalUser.roleKey 
-          })
+          setAuth(null)
         }
+      } catch (error) {
+        console.error('Auth check error:', error)
+        setAuth(null)
+      } finally {
+        setAuthLoading(false)
       }
     }
     
@@ -56,11 +72,19 @@ function AppContent() {
     const { data: { subscription } } = onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT') {
         setAuth(null)
+        setAuthLoading(false)
         if (portalMode === 'internal') {
           setPortalMode('public')
           setSelectedPortal(null)
         }
       } else if (event === 'SIGNED_IN' && session) {
+        const user = await getCurrentUser()
+        if (user) {
+          setAuth(user)
+          setAuthLoading(false)
+        }
+      } else if (event === 'TOKEN_REFRESHED' && session) {
+        // Refresh user data when token is refreshed
         const user = await getCurrentUser()
         if (user) {
           setAuth(user)
@@ -157,6 +181,7 @@ function AppContent() {
             requiredAuth={true}
             requiredAdmin={true}
             auth={auth}
+            authLoading={authLoading}
             onBack={handleBackToPublic}
           >
             <AdminPortal onBack={handleBackToPublic} />
@@ -165,6 +190,7 @@ function AppContent() {
         <Route path="/portal/department/:department/:roleKey" element={
           <ProtectedDepartmentRoute 
             auth={auth}
+            authLoading={authLoading}
             onBack={handleBackToPublic}
           />
         } />
@@ -202,16 +228,28 @@ function PortalLoginWrapper({ onSuccess }) {
 }
 
 // Protected Route Component
-function ProtectedRoute({ children, requiredAuth, requiredAdmin, auth, onBack }) {
+function ProtectedRoute({ children, requiredAuth, requiredAdmin, auth, onBack, authLoading }) {
   const navigate = useNavigate()
   
   useEffect(() => {
+    // Don't redirect while auth is still loading
+    if (authLoading) return
+    
     if (requiredAuth && !auth) {
       navigate('/portal')
     } else if (requiredAdmin && auth && !auth.portalUser.isAdmin) {
       navigate('/portal')
     }
-  }, [auth, requiredAuth, requiredAdmin, navigate])
+  }, [auth, authLoading, requiredAuth, requiredAdmin, navigate])
+
+  // Show loading state while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <p className="text-mayor-navy font-amharic">Loading...</p>
+      </div>
+    )
+  }
 
   if (requiredAuth && !auth) {
     return null
@@ -223,17 +261,29 @@ function ProtectedRoute({ children, requiredAuth, requiredAdmin, auth, onBack })
 }
 
 // Protected Department Route Component
-function ProtectedDepartmentRoute({ auth, onBack }) {
+function ProtectedDepartmentRoute({ auth, onBack, authLoading }) {
   const { department, roleKey } = useParams()
   const navigate = useNavigate()
 
   useEffect(() => {
+    // Don't redirect while auth is still loading
+    if (authLoading) return
+    
     if (!auth) {
       navigate('/portal')
     } else if (auth.portalUser.roleKey !== roleKey) {
       navigate('/portal')
     }
-  }, [auth, roleKey, navigate])
+  }, [auth, authLoading, roleKey, navigate])
+
+  // Show loading state while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <p className="text-mayor-navy font-amharic">Loading...</p>
+      </div>
+    )
+  }
 
   if (!auth || auth.portalUser.roleKey !== roleKey) {
     return null

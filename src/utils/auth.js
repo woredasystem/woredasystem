@@ -174,25 +174,34 @@ export async function logout() {
 
 export async function getCurrentUser() {
   try {
-    const { data: { user }, error } = await supabase.auth.getUser()
+    // First check if there's an active session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     
-    if (error || !user) {
+    if (sessionError || !session) {
+      return null
+    }
+
+    // Get the user from the session
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    if (userError || !user) {
       return null
     }
 
     // Get portal user details using user_id
-    const { data: portalUser, error: userError } = await supabase
+    const { data: portalUser, error: userError: portalUserError } = await supabase
       .from('portal_users')
       .select('*')
       .eq('user_id', user.id)
       .single()
 
-    if (userError || !portalUser) {
+    if (portalUserError || !portalUser) {
       return null
     }
 
     return {
       user,
+      session,
       portalUser: {
         id: portalUser.id,
         email: portalUser.email,

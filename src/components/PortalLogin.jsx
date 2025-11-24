@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useLanguage } from '../hooks/useLanguage'
-import { login } from '../utils/auth'
+import { login, getCurrentUser, logout } from '../utils/auth'
 import { getDepartmentDisplayName } from '../utils/routing'
 import { Shield, Lock, Building2 } from 'lucide-react'
 
@@ -15,12 +15,48 @@ export default function PortalLogin({ department, roleKey, onSuccess, onBack }) 
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // Check if user is already logged in on mount
+  useEffect(() => {
+    const checkExistingAuth = async () => {
+      try {
+        // Wait a bit for Supabase to restore session
+        await new Promise(resolve => setTimeout(resolve, 200))
+        
+        const user = await getCurrentUser()
+        if (user) {
+          // User is already logged in, verify access and call onSuccess
+          if (user.portalUser.department === department || user.portalUser.isAdmin) {
+            onSuccess({
+              user: user.user,
+              session: user.session,
+              portalUser: user.portalUser
+            })
+          } else {
+            // User is logged in but doesn't have access to this portal
+            setError(lang === 'am' ? 'ይህንን ፓንል ለመዳረስ ፍቃድ የለዎትም' : 'You do not have access to this portal')
+          }
+        }
+      } catch (err) {
+        console.error('Error checking existing auth:', err)
+      }
+    }
+    
+    checkExistingAuth()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [department, lang])
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
 
     try {
+      // If user is already logged in with a different account, sign them out first
+      const existingUser = await getCurrentUser()
+      if (existingUser && existingUser.portalUser.department !== department && !existingUser.portalUser.isAdmin) {
+        await logout()
+      }
+      
       const result = await login(departmentName.trim(), password)
       
       if (result.success) {
