@@ -189,7 +189,7 @@ export async function getCurrentUser() {
     }
 
     // Get portal user details using user_id
-    const { data: portalUser, error: userError: portalUserError } = await supabase
+    const { data: portalUser, error: portalUserError } = await supabase
       .from('portal_users')
       .select('*')
       .eq('user_id', user.id)
