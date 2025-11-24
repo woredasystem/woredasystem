@@ -21,13 +21,7 @@ export default function PortalLogin({ department, roleKey, onSuccess, onBack }) 
     setLoading(true)
 
     try {
-      // Add timeout to prevent infinite hanging
-      const loginPromise = login(departmentName.trim(), password)
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Login timeout - please try again')), 15000)
-      )
-      
-      const result = await Promise.race([loginPromise, timeoutPromise])
+      const result = await login(departmentName.trim(), password)
       
       if (result.success) {
         // Verify user has access to this department
