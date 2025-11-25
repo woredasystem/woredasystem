@@ -261,36 +261,38 @@ export default function DepartmentPortal({ department, roleKey, onBack }) {
     const gregorianDate = new Date(dateString)
     const ethDate = gregorianToEthiopian(gregorianDate)
     
-    // Get hour and minute from UTC to avoid timezone conversion issues
-    // Since we stored it as UTC, we need to read it as UTC
+    // Get hour and minute from UTC - the appointment time is stored with Ethiopian hours directly in UTC
+    // So we read it directly without any conversion
     const hour = gregorianDate.getUTCHours()
     const minute = gregorianDate.getUTCMinutes()
     
-    // Convert to Ethiopian time (6 hours behind)
-    let ethHour = hour - 6
-    if (ethHour < 0) ethHour += 24
-    
-    // Convert to 12-hour format
-    let displayHour = ethHour
+    // Ethiopian time format: 3-7 ጠዋት, 8-11 ከሰአት
+    let hourDisplay = hour
     let period = ''
-    if (ethHour === 0) {
-      displayHour = 12
+    if (hour >= 3 && hour <= 7) {
       period = lang === 'am' ? 'ጠዋት' : 'AM'
-    } else if (ethHour >= 1 && ethHour <= 5) {
-      period = lang === 'am' ? 'ጠዋት' : 'AM'
-    } else if (ethHour >= 6 && ethHour <= 11) {
-      period = lang === 'am' ? 'ከሰአት' : 'AM'
-    } else if (ethHour === 12) {
-      period = lang === 'am' ? 'ከሰአት' : 'PM'
-    } else if (ethHour >= 13 && ethHour <= 17) {
-      displayHour = ethHour - 12
+    } else if (hour >= 8 && hour <= 11) {
       period = lang === 'am' ? 'ከሰአት' : 'PM'
     } else {
-      displayHour = ethHour - 12
-      period = lang === 'am' ? 'ማታ' : 'PM'
+      // For hours outside 3-11, convert to 12-hour format
+      let hour12 = hour
+      if (hour === 0) {
+        hour12 = 12
+        period = lang === 'am' ? 'ማታ' : 'AM'
+      } else if (hour < 12) {
+        hour12 = hour
+        period = lang === 'am' ? 'ጠዋት' : 'AM'
+      } else if (hour === 12) {
+        hour12 = 12
+        period = lang === 'am' ? 'ከሰአት' : 'PM'
+      } else {
+        hour12 = hour - 12
+        period = lang === 'am' ? 'ከሰአት' : 'PM'
+      }
+      hourDisplay = hour12
     }
     
-    const hourDisplay = displayHour.toString().padStart(2, '0')
+    hourDisplay = hourDisplay.toString().padStart(2, '0')
     const minuteDisplay = minute.toString().padStart(2, '0')
     
     // Format the date
