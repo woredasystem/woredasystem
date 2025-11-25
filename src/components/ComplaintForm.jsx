@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLanguage } from '../hooks/useLanguage'
 import { supabase } from '../lib/supabase'
-import { officials } from '../data/officials'
+import { complaintOfficials } from '../data/officials'
 import { X, Check } from 'lucide-react'
 import ImageModal from './ImageModal'
 import ComplaintSuccessModal from './ComplaintSuccessModal'
@@ -80,6 +80,13 @@ export default function ComplaintForm({ onClose, onSuccess }) {
       // Determine department and role key from target official
       const assignedDepartment = getDepartmentFromOfficial(formData.target_official, lang)
       const assignedToRoleKey = getRoleKeyFromOfficial(formData.target_official, lang)
+
+      console.log('Complaint routing:', {
+        target_official: formData.target_official,
+        assignedDepartment,
+        assignedToRoleKey,
+        lang
+      })
 
       const insertData = {
         complainant_name: formData.complainant_name,
@@ -440,7 +447,7 @@ export default function ComplaintForm({ onClose, onSuccess }) {
               {t('targetOfficial')} *
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {officials.map((official) => {
+              {complaintOfficials.map((official) => {
                 const isSelected = formData.target_official === (lang === 'am' ? official.full_name_am : official.full_name_en)
                 return (
                   <button

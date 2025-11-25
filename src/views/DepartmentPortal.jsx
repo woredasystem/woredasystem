@@ -241,6 +241,22 @@ export default function DepartmentPortal({ department, roleKey, onBack }) {
     }
   }
 
+  // Format date only (without time) - for complaint submission dates
+  const formatDateOnly = (dateString) => {
+    if (!dateString) return 'N/A'
+    const gregorianDate = new Date(dateString)
+    const ethDate = gregorianToEthiopian(gregorianDate)
+    const monthName = lang === 'am' 
+      ? ethiopianMonths[ethDate.month - 1]
+      : ethiopianMonthsEn[ethDate.month - 1]
+    
+    if (lang === 'am') {
+      return `${ethDate.day} ${monthName} ${ethDate.year}`
+    } else {
+      return `${monthName} ${ethDate.day}, ${ethDate.year}`
+    }
+  }
+
   const formatAppointmentDate = (dateString) => {
     const gregorianDate = new Date(dateString)
     const ethDate = gregorianToEthiopian(gregorianDate)
@@ -532,7 +548,7 @@ export default function DepartmentPortal({ department, roleKey, onBack }) {
                           )}
                         </div>
                         <p className="text-mayor-navy/60 text-xs font-amharic">
-                          {formatDate(complaint.created_at)}
+                          {complaint.complaint_submission_date ? formatDateOnly(complaint.complaint_submission_date) : formatDate(complaint.created_at)}
                         </p>
                         {complaint.resolution_note && (
                           <div className="mt-4 pt-4 border-t border-mayor-gray-divider bg-green-50 p-3 rounded-gov">

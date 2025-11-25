@@ -52,6 +52,22 @@ export default function ComplaintDetailModal({ complaint, onClose }) {
     }
   }
 
+  // Format date only (without time) - for Form 2 submission dates
+  const formatDateOnly = (dateString) => {
+    if (!dateString) return 'N/A'
+    const gregorianDate = new Date(dateString)
+    const ethDate = gregorianToEthiopian(gregorianDate)
+    const monthName = lang === 'am' 
+      ? ethiopianMonths[ethDate.month - 1]
+      : ethiopianMonthsEn[ethDate.month - 1]
+    
+    if (lang === 'am') {
+      return `${ethDate.day} ${monthName} ${ethDate.year}`
+    } else {
+      return `${monthName} ${ethDate.day}, ${ethDate.year}`
+    }
+  }
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'Resolved': return 'bg-green-600'
@@ -94,7 +110,7 @@ export default function ComplaintDetailModal({ complaint, onClose }) {
                 {t('uniqueCode')}: <span className="font-semibold text-mayor-navy text-lg">{complaint.unique_code || 'N/A'}</span>
               </p>
               <p className="text-mayor-navy/60 text-sm font-amharic">
-                {t('submittedDate')}: <span className="font-semibold text-mayor-navy">{formatDate(complaint.created_at)}</span>
+                {t('submittedDate')}: <span className="font-semibold text-mayor-navy">{complaint.complaint_submission_date ? formatDateOnly(complaint.complaint_submission_date) : formatDate(complaint.created_at)}</span>
               </p>
             </div>
             <div className="text-right">
@@ -269,7 +285,7 @@ export default function ComplaintDetailModal({ complaint, onClose }) {
               {complaint.complaint_submission_date && (
                 <div className="mb-4">
                   <p className="text-mayor-navy/70 text-sm font-amharic mb-1">{t('complaintSubmissionDate')}</p>
-                  <p className="text-mayor-navy font-semibold font-amharic">{formatDate(complaint.complaint_submission_date)}</p>
+                  <p className="text-mayor-navy font-semibold font-amharic">{formatDateOnly(complaint.complaint_submission_date)}</p>
                 </div>
               )}
 
@@ -321,7 +337,7 @@ export default function ComplaintDetailModal({ complaint, onClose }) {
                   <p className="text-mayor-navy font-semibold font-amharic">{complaint.investigated_by_expert}</p>
                   {complaint.expert_investigation_date && (
                     <p className="text-mayor-navy/70 text-sm font-amharic mt-1">
-                      {t('expertInvestigationDate')}: {formatDate(complaint.expert_investigation_date)}
+                      {t('expertInvestigationDate')}: {formatDateOnly(complaint.expert_investigation_date)}
                     </p>
                   )}
                 </div>
@@ -333,7 +349,7 @@ export default function ComplaintDetailModal({ complaint, onClose }) {
                   <p className="text-mayor-navy font-semibold font-amharic">{complaint.final_decision_by}</p>
                   {complaint.final_decision_date && (
                     <p className="text-mayor-navy/70 text-sm font-amharic mt-1">
-                      {t('finalDecisionDate')}: {formatDate(complaint.final_decision_date)}
+                      {t('finalDecisionDate')}: {formatDateOnly(complaint.final_decision_date)}
                     </p>
                   )}
                 </div>

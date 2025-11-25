@@ -1,4 +1,5 @@
 // Supabase Authentication utility for internal portals
+// Improved version with caching, refresh handling, and error recovery
 import { supabase } from '../lib/supabase'
 
 // Map Amharic department name directly to email (frontend mapping - no DB query needed)
@@ -26,6 +27,56 @@ function getDepartmentFromAmharic(deptAm) {
   return mapping[deptAm] || null
 }
 
+// Session cache with TTL (Time To Live)
+const sessionCache = {
+  data: null,
+  timestamp: null,
+  ttl: 5 * 60 * 1000, // 5 minutes cache
+  isRefreshing: false
+}
+
+// Clear cache
+function clearCache() {
+  sessionCache.data = null
+  sessionCache.timestamp = null
+  sessionCache.isRefreshing = false
+}
+
+// Check if cache is valid
+function isCacheValid() {
+  if (!sessionCache.data || !sessionCache.timestamp) {
+    return false
+  }
+  const age = Date.now() - sessionCache.timestamp
+  return age < sessionCache.ttl
+}
+
+// Get cached user or null
+function getCachedUser() {
+  if (isCacheValid()) {
+    return sessionCache.data
+  }
+  return null
+}
+
+// Set cached user
+function setCachedUser(user) {
+  sessionCache.data = user
+  sessionCache.timestamp = Date.now()
+}
+
+// Retry helper with exponential backoff
+async function retryWithBackoff(fn, maxRetries = 3, delay = 1000) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn()
+    } catch (error) {
+      if (i === maxRetries - 1) throw error
+      await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)))
+    }
+  }
+}
+
 export async function login(departmentNameOrEmail, password) {
   try {
     // Determine if input is Amharic department name or email
@@ -42,10 +93,14 @@ export async function login(departmentNameOrEmail, password) {
       email = departmentNameOrEmail
     }
 
-    // Sign in with Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password
+    // Sign in with Supabase Auth with retry
+    const { data: authData, error: authError } = await retryWithBackoff(async () => {
+      const result = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
+      if (result.error) throw result.error
+      return result
     })
 
     if (authError) {
@@ -53,7 +108,6 @@ export async function login(departmentNameOrEmail, password) {
       let errorMessage = authError.message
       
       if (authError.message.includes('Invalid login credentials') || authError.message.includes('Email not confirmed')) {
-        // Check if user exists but credentials are wrong
         errorMessage = 'Invalid email or password. Please check your credentials.'
       } else if (authError.message.includes('User not found') || authError.message.includes('Invalid login')) {
         errorMessage = 'User account not found. Please contact administrator to create your account.'
@@ -61,7 +115,6 @@ export async function login(departmentNameOrEmail, password) {
         errorMessage = 'Email not confirmed. Please contact administrator.'
       }
       
-      console.error('Auth error:', { email, error: authError.message, code: authError.status })
       return { success: false, error: errorMessage }
     }
 
@@ -69,56 +122,47 @@ export async function login(departmentNameOrEmail, password) {
       return { success: false, error: 'Authentication failed - no user or session' }
     }
 
-    // The session from signInWithPassword is already active in the client
-    // No need to call setSession again - it's already set by signInWithPassword
-    
     // Now that we're authenticated, RLS policies allow us to query
     let portalUser = null
     
     // Try by user_id first (preferred method) - this should work with the active session
-    const { data: userById, error: errorById } = await supabase
-      .from('portal_users')
-      .select('*')
-      .eq('user_id', authData.user.id)
-      .single()
+    const { data: userById, error: errorById } = await retryWithBackoff(async () => {
+      const result = await supabase
+        .from('portal_users')
+        .select('*')
+        .eq('user_id', authData.user.id)
+        .single()
+      if (result.error && result.error.code !== 'PGRST116') throw result.error
+      return result
+    })
     
     if (userById && !errorById) {
       portalUser = userById
     } else {
-      console.log('User lookup by user_id failed, trying email:', { 
-        errorById: errorById?.message || errorById, 
-        userId: authData.user.id 
-      })
-      
       // Fallback to email lookup (for initial setup)
-      const { data: userByEmail, error: errorByEmail } = await supabase
-        .from('portal_users')
-        .select('*')
-        .eq('email', email)
-        .single()
+      const { data: userByEmail, error: errorByEmail } = await retryWithBackoff(async () => {
+        const result = await supabase
+          .from('portal_users')
+          .select('*')
+          .eq('email', email)
+          .single()
+        if (result.error && result.error.code !== 'PGRST116') throw result.error
+        return result
+      })
       
       if (userByEmail && !errorByEmail) {
         portalUser = userByEmail
         // Link the user_id if not already linked
         if (!portalUser.user_id) {
-          const { error: updateError } = await supabase
+          await supabase
             .from('portal_users')
             .update({ user_id: authData.user.id })
             .eq('id', portalUser.id)
-          
-          if (updateError) {
-            console.error('Failed to link user_id:', updateError)
-          }
         }
       } else {
-        console.error('Portal user lookup errors:', { 
-          errorById: errorById?.message || errorById, 
-          errorByEmail: errorByEmail?.message || errorByEmail,
-          email,
-          userId: authData.user.id
-        })
         // If user doesn't exist in portal_users, sign out
         await supabase.auth.signOut()
+        clearCache()
         return { 
           success: false, 
           error: errorByEmail?.message || errorById?.message || 'User not authorized for portal access' 
@@ -128,117 +172,104 @@ export async function login(departmentNameOrEmail, password) {
 
     if (!portalUser) {
       await supabase.auth.signOut()
+      clearCache()
       return { success: false, error: 'User not authorized for portal access' }
     }
 
-    // If login was by department name, verify it matches
-    // Note: Allow slight variations (e.g., "Chief Executive" vs "Chief Executive Office")
-    if (targetDepartment && portalUser.department !== targetDepartment) {
-      // Log for debugging
-      console.warn('Department mismatch:', {
-        targetDepartment,
-        portalUserDepartment: portalUser.department,
-        email: portalUser.email
-      })
-      
-      // For now, allow login but log the mismatch
-      // The PortalLogin component will verify access to the specific portal
-      // This check is too strict and causes issues with department name variations
+    // Cache the user data
+    const userData = {
+      user: authData.user,
+      session: authData.session,
+      portalUser: {
+        id: portalUser.id,
+        email: portalUser.email,
+        username: portalUser.username,
+        fullName: portalUser.full_name,
+        department: portalUser.department,
+        roleKey: portalUser.role_key,
+        isAdmin: portalUser.is_admin
+      }
     }
+    
+    setCachedUser(userData)
 
     return {
       success: true,
-      authData: {
-        user: authData.user,
-        session: authData.session,
-        portalUser: {
-          id: portalUser.id,
-          email: portalUser.email,
-          username: portalUser.username,
-          fullName: portalUser.full_name,
-          department: portalUser.department,
-          roleKey: portalUser.role_key,
-          isAdmin: portalUser.is_admin
-        }
-      }
+      authData: userData
     }
   } catch (error) {
     console.error('Login error:', error)
-    return { success: false, error: 'An error occurred during login' }
+    clearCache()
+    return { success: false, error: error.message || 'An error occurred during login' }
   }
 }
 
 export async function logout() {
+  clearCache()
   await supabase.auth.signOut()
 }
 
 // Track if getCurrentUser is already running to prevent concurrent calls
 let getCurrentUserPromise = null
 
-export async function getCurrentUser() {
+export async function getCurrentUser(forceRefresh = false) {
   try {
+    // Check cache first (unless force refresh)
+    if (!forceRefresh) {
+      const cached = getCachedUser()
+      if (cached) {
+        // Verify session is still valid
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user?.id === cached.user?.id) {
+          return cached
+        } else {
+          // Session changed, clear cache
+          clearCache()
+        }
+      }
+    }
+
     // If already running, return the existing promise
     if (getCurrentUserPromise) {
-      console.log('getCurrentUser: Already running, reusing promise')
       return await getCurrentUserPromise
     }
-    
-    console.log('getCurrentUser: Starting...')
     
     // Create the promise and store it
     getCurrentUserPromise = (async () => {
       try {
         // First check if there's an active session
-        console.log('getCurrentUser: Calling getSession...')
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        console.log('getCurrentUser: Session check:', { hasSession: !!session, error: sessionError?.message })
         
-        if (sessionError) {
-          console.error('getCurrentUser: Session error:', sessionError)
-          return null
-        }
-        
-        if (!session) {
-          console.log('getCurrentUser: No session found')
+        if (sessionError || !session) {
+          clearCache()
           return null
         }
 
-        // Get the user from the session
-        console.log('getCurrentUser: Calling getUser...')
+        // Get the user from the session (this validates the token)
         const { data: { user }, error: userError } = await supabase.auth.getUser()
-        console.log('getCurrentUser: User check:', { hasUser: !!user, userId: user?.id, error: userError?.message })
         
-        if (userError) {
-          console.error('getCurrentUser: User error:', userError)
-          return null
-        }
-        
-        if (!user) {
-          console.log('getCurrentUser: No user found')
+        if (userError || !user) {
+          clearCache()
           return null
         }
 
-        // Get portal user details using user_id
-        console.log('getCurrentUser: Fetching portal user for user_id:', user.id)
-        const { data: portalUser, error: portalUserError } = await supabase
-          .from('portal_users')
-          .select('*')
-          .eq('user_id', user.id)
-          .single()
+        // Get portal user details using user_id with retry
+        const { data: portalUser, error: portalUserError } = await retryWithBackoff(async () => {
+          const result = await supabase
+            .from('portal_users')
+            .select('*')
+            .eq('user_id', user.id)
+            .single()
+          if (result.error && result.error.code !== 'PGRST116') throw result.error
+          return result
+        })
 
-        console.log('getCurrentUser: Portal user query:', { hasPortalUser: !!portalUser, error: portalUserError?.message })
-
-        if (portalUserError) {
-          console.error('getCurrentUser: Portal user error:', portalUserError)
-          return null
-        }
-        
-        if (!portalUser) {
-          console.log('getCurrentUser: No portal user found')
+        if (portalUserError || !portalUser) {
+          clearCache()
           return null
         }
 
-        const result = {
+        const userData = {
           user,
           session,
           portalUser: {
@@ -251,9 +282,15 @@ export async function getCurrentUser() {
             isAdmin: portalUser.is_admin
           }
         }
+
+        // Cache the result
+        setCachedUser(userData)
         
-        console.log('getCurrentUser: Success:', { userId: user.id, department: portalUser.department, roleKey: portalUser.role_key })
-        return result
+        return userData
+      } catch (error) {
+        console.error('getCurrentUser error:', error)
+        clearCache()
+        return null
       } finally {
         // Clear the promise when done
         getCurrentUserPromise = null
@@ -265,20 +302,29 @@ export async function getCurrentUser() {
       setTimeout(() => {
         getCurrentUserPromise = null
         reject(new Error('getCurrentUser timeout'))
-      }, 10000) // 10 second timeout
+      }, 5000) // 5 second timeout
     )
     
     return await Promise.race([getCurrentUserPromise, timeoutPromise])
   } catch (error) {
     getCurrentUserPromise = null
-    console.error('Get current user error:', error)
+    clearCache()
     return null
   }
 }
 
 export async function getSession() {
-  const { data: { session } } = await supabase.auth.getSession()
-  return session
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession()
+    if (error) {
+      clearCache()
+      return null
+    }
+    return session
+  } catch (error) {
+    clearCache()
+    return null
+  }
 }
 
 export function isAuthenticated() {
@@ -287,6 +333,39 @@ export function isAuthenticated() {
 
 // Listen to auth state changes
 export function onAuthStateChange(callback) {
-  return supabase.auth.onAuthStateChange(callback)
+  return supabase.auth.onAuthStateChange(async (event, session) => {
+    // Clear cache on sign out
+    if (event === 'SIGNED_OUT') {
+      clearCache()
+    }
+    
+    // Refresh cache on sign in or token refresh
+    if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+      // Clear cache to force refresh
+      clearCache()
+    }
+    
+    // Call the callback
+    callback(event, session)
+  })
 }
 
+// Refresh user data (force cache refresh)
+export async function refreshUser() {
+  return getCurrentUser(true)
+}
+
+// Check if user has access to a department
+export async function hasDepartmentAccess(department) {
+  const user = await getCurrentUser()
+  if (!user) return false
+  if (user.portalUser.isAdmin) return true
+  return user.portalUser.department === department
+}
+
+// Export cache utilities for debugging
+export const authCache = {
+  clear: clearCache,
+  get: getCachedUser,
+  isValid: isCacheValid
+}

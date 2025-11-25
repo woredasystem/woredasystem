@@ -1,11 +1,13 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../hooks/useLanguage'
 import { getDepartmentDisplayName, roleToDepartment } from '../utils/routing'
 import { officials } from '../data/officials'
-import { Building2, Shield, ArrowRight } from 'lucide-react'
+import { Building2, Shield, ArrowRight, Home } from 'lucide-react'
 
 export default function PortalAccess({ onSelectPortal }) {
   const { t, lang } = useLanguage()
+  const navigate = useNavigate()
   const [selectedRole, setSelectedRole] = useState(null)
 
   const departments = [
@@ -31,6 +33,16 @@ export default function PortalAccess({ onSelectPortal }) {
     <div className="min-h-screen bg-gradient-to-br from-mayor-deep-blue via-mayor-royal-blue to-mayor-highlight-blue flex items-center justify-center p-6">
       <div className="max-w-4xl w-full">
         <div className="gov-card p-8">
+          <div className="flex items-center justify-between mb-8">
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2 px-4 py-2 text-mayor-navy hover:text-mayor-royal-blue hover:bg-mayor-royal-blue/10 rounded-gov transition-colors font-amharic"
+            >
+              <Home className="w-5 h-5" />
+              <span>{lang === 'am' ? 'ወደ መነሻ ተመለስ' : 'Back to Home'}</span>
+            </button>
+          </div>
+          
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-mayor-navy mb-2 font-amharic">
               {lang === 'am' ? 'የመዳረሻ ፓንል' : 'Portal Access'}

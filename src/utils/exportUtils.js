@@ -86,7 +86,7 @@ export function exportComplaintsToCSV(complaints, lang = 'am') {
          complaint.status === 'Escalated' ? 'ወደ ላይ ተላልፏል' : complaint.status)
       : complaint.status,
     complaint.escalation_level || 1,
-    formatDate(complaint.created_at, lang)
+    formatDate(complaint.complaint_submission_date || complaint.created_at, lang)
   ])
   
   const csvContent = [

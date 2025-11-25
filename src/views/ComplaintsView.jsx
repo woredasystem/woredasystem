@@ -135,6 +135,22 @@ export default function ComplaintsView({ onBack }) {
     }
   }
 
+  // Format date only (without time) - for complaint submission dates
+  const formatDateOnly = (dateString) => {
+    if (!dateString) return 'N/A'
+    const gregorianDate = new Date(dateString)
+    const ethDate = gregorianToEthiopian(gregorianDate)
+    const monthName = lang === 'am' 
+      ? ethiopianMonths[ethDate.month - 1]
+      : ethiopianMonthsEn[ethDate.month - 1]
+    
+    if (lang === 'am') {
+      return `${ethDate.day} ${monthName} ${ethDate.year}`
+    } else {
+      return `${monthName} ${ethDate.day}, ${ethDate.year}`
+    }
+  }
+
   return (
     <div className="min-h-screen bg-white">
       <div className="p-6 pt-24">
@@ -306,7 +322,7 @@ export default function ComplaintsView({ onBack }) {
                     )}
                   </div>
                   <p className="text-mayor-navy/60 text-sm font-amharic mb-2">
-                    {t('submittedDate')}: {formatDate(complaint.created_at)}
+                    {t('submittedDate')}: {complaint.complaint_submission_date ? formatDateOnly(complaint.complaint_submission_date) : formatDate(complaint.created_at)}
                   </p>
                   {complaint.resolution_note && (
                     <div className="mt-4 pt-4 border-t border-mayor-gray-divider bg-green-50 p-4 rounded-gov">
