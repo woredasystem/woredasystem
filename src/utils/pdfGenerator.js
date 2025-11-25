@@ -48,6 +48,22 @@ export function generateComplaintPDF(complaint, lang = 'am') {
     }
   }
 
+  // Format date only (without time) - for Form 2 submission dates
+  const formatDateOnly = (dateString) => {
+    if (!dateString) return 'N/A'
+    const createdDate = new Date(dateString)
+    const ethDate = gregorianToEthiopian(createdDate)
+    const monthName = lang === 'am' 
+      ? ethiopianMonths[ethDate.month - 1]
+      : ethiopianMonthsEn[ethDate.month - 1]
+    
+    if (lang === 'am') {
+      return `${ethDate.day} ${monthName} ${ethDate.year}`
+    } else {
+      return `${monthName} ${ethDate.day}, ${ethDate.year}`
+    }
+  }
+
   // Format status
   const statusText = lang === 'am' 
     ? (complaint.status === 'Pending' ? 'በመጠባበቅ ላይ' :
@@ -124,12 +140,49 @@ export function generateComplaintPDF(complaint, lang = 'am') {
           margin-bottom: 15px;
           padding-bottom: 8px;
           border-bottom: 2px solid #E3E3E3;
+          page-break-after: avoid;
+          break-after: avoid;
+        }
+        
+        .form-break {
+          page-break-before: always !important;
+          break-before: page !important;
+          page-break-after: avoid;
+          break-after: avoid;
+        }
+        
+        @media print {
+          .form-break {
+            page-break-before: always !important;
+            break-before: page !important;
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+          }
+          
+          .info-row, .description-box, .resolution-box, .group-members-box {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          
+          .section-title {
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+          }
         }
         
         .info-row {
           margin-bottom: 12px;
           display: flex;
           align-items: flex-start;
+          page-break-inside: avoid;
+          break-inside: avoid;
+        }
+        
+        .description-box, .resolution-box, .group-members-box {
+          page-break-inside: avoid;
+          break-inside: avoid;
+          orphans: 3;
+          widows: 3;
         }
         
         .info-label {
@@ -170,6 +223,8 @@ export function generateComplaintPDF(complaint, lang = 'am') {
           line-height: 1.8;
           white-space: pre-wrap;
           word-wrap: break-word;
+          page-break-inside: avoid;
+          break-inside: avoid;
         }
         
         .resolution-box {
@@ -182,6 +237,8 @@ export function generateComplaintPDF(complaint, lang = 'am') {
           line-height: 1.8;
           white-space: pre-wrap;
           word-wrap: break-word;
+          page-break-inside: avoid;
+          break-inside: avoid;
         }
         
         .group-members-box {
@@ -194,6 +251,8 @@ export function generateComplaintPDF(complaint, lang = 'am') {
           line-height: 1.8;
           white-space: pre-wrap;
           word-wrap: break-word;
+          page-break-inside: avoid;
+          break-inside: avoid;
         }
         
         .status-badge {
@@ -228,6 +287,8 @@ export function generateComplaintPDF(complaint, lang = 'am') {
           height: 1px;
           background: #E3E3E3;
           margin: 20px 0;
+          page-break-inside: avoid;
+          break-inside: avoid;
         }
         
         .footer {
@@ -406,7 +467,7 @@ export function generateComplaintPDF(complaint, lang = 'am') {
           ${complaint.complaint_submission_date ? `
           <div class="info-row">
             <div class="info-label">${lang === 'am' ? 'የቅሬታ የቀረበበት ቀን:' : 'Complaint Submission Date:'}</div>
-            <div class="info-value">${formatDate(complaint.complaint_submission_date)}</div>
+            <div class="info-value">${formatDateOnly(complaint.complaint_submission_date)}</div>
           </div>
           ` : ''}
         </div>
@@ -420,9 +481,11 @@ export function generateComplaintPDF(complaint, lang = 'am') {
         ` : ''}
         
         ${(complaint.appeal_content || complaint.properly_investigated !== null || complaint.investigation_findings || complaint.summary_response) ? `
+        <div style="page-break-before: always; break-before: page; height: 0; margin: 0; padding: 0;"></div>
         <div class="divider"></div>
-        <div class="section">
-          <div class="section-title">${lang === 'am' ? 'ቅፅ-02: የቅሬታ/አቤቱታ መልስ መስጪያ' : 'Form-02: Complaint/Appeal Response Provider'}</div>
+        <div class="form-break" style="page-break-before: always; break-before: page;">
+          <div class="section">
+            <div class="section-title">${lang === 'am' ? 'ቅፅ-02: የቅሬታ/አቤቱታ መልስ መስጪያ' : 'Form-02: Complaint/Appeal Response Provider'}</div>
           
           ${complaint.complaint_submission_institution ? `
           <div class="info-row">
@@ -430,6 +493,11 @@ export function generateComplaintPDF(complaint, lang = 'am') {
             <div class="info-value">${complaint.complaint_submission_institution}</div>
           </div>
           ` : ''}
+          
+          <div class="info-row">
+            <div class="info-label">${lang === 'am' ? 'ቅሬታው የቀረበበት ቀን:' : 'Date of Complaint Submission:'}</div>
+            <div class="info-value">${complaint.complaint_submission_date ? formatDateOnly(complaint.complaint_submission_date) : formatDateOnly(complaint.created_at)}</div>
+          </div>
           
           ${complaint.appeal_content ? `
           <div class="info-row">
@@ -489,7 +557,7 @@ export function generateComplaintPDF(complaint, lang = 'am') {
           ${complaint.expert_investigation_date ? `
           <div class="info-row">
             <div class="info-label">${lang === 'am' ? 'የጣርታ ቀን:' : 'Investigation Date:'}</div>
-            <div class="info-value">${formatDate(complaint.expert_investigation_date)}</div>
+            <div class="info-value">${formatDateOnly(complaint.expert_investigation_date)}</div>
           </div>
           ` : ''}
           ` : ''}
@@ -502,7 +570,7 @@ export function generateComplaintPDF(complaint, lang = 'am') {
           ${complaint.final_decision_date ? `
           <div class="info-row">
             <div class="info-label">${lang === 'am' ? 'የመጨረሻ ውሳኔ ቀን:' : 'Final Decision Date:'}</div>
-            <div class="info-value">${formatDate(complaint.final_decision_date)}</div>
+            <div class="info-value">${formatDateOnly(complaint.final_decision_date)}</div>
           </div>
           ` : ''}
           ` : ''}
@@ -539,13 +607,20 @@ export function generateComplaintPDF(complaint, lang = 'am') {
     html2canvas: { 
       scale: 2,
       useCORS: true,
-      letterRendering: true
+      letterRendering: true,
+      logging: false
     },
     jsPDF: { 
       unit: 'mm', 
       format: 'a4', 
       orientation: 'portrait',
       compress: true
+    },
+    pagebreak: { 
+      mode: ['css', 'avoid-all'],
+      before: '.form-break',
+      avoid: ['.info-row', '.description-box', '.resolution-box', '.group-members-box', '.section-title'],
+      after: []
     }
   }
 
