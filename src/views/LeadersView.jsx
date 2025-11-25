@@ -1,15 +1,19 @@
 import { ArrowLeft } from 'lucide-react'
 import { useLanguage } from '../hooks/useLanguage'
-import { officials } from '../data/officials'
+import { officialsByCategory } from '../data/officials'
+import { staticLeadersByCategory } from '../data/staticLeaders'
 import LeaderPageCard from '../components/LeaderPageCard'
 
 export default function LeadersView({ onBack }) {
   const { t, lang } = useLanguage()
 
-  // Get first 3 leaders for the main row
-  const mainLeaders = officials.slice(0, 3)
-  // Get remaining leaders for second row if needed
-  const otherLeaders = officials.slice(3)
+  // Define category order
+  const categoryOrder = [
+    'coordinating_committee',
+    'party_committee',
+    'commission_head',
+    'office_heads'
+  ]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-mayor-royal-blue/5 to-white">
@@ -38,32 +42,56 @@ export default function LeadersView({ onBack }) {
             </p>
           </div>
 
-          {/* Main Leaders Row - 3 Cards */}
-          <div className="grid md:grid-cols-3 gap-8 mb-12">
-            {mainLeaders.map((official) => (
-              <LeaderPageCard key={official.id} official={official} />
-            ))}
-          </div>
+          {/* Leaders by Category */}
+          {categoryOrder.map((categoryKey, categoryIndex) => {
+            const category = officialsByCategory[categoryKey]
+            const staticCategory = staticLeadersByCategory[categoryKey]
+            
+            // Prioritize static leaders over dynamic officials
+            // Static leaders have the updated full names, so use them when available
+            // For categories that exist in both, prefer static leaders
+            let allLeaders = []
+            
+            if (staticCategory?.leaders?.length > 0) {
+              // Use static leaders (they have updated full names)
+              allLeaders = staticCategory.leaders
+            } else if (category?.officials?.length > 0) {
+              // Fall back to dynamic officials if no static leaders
+              allLeaders = category.officials
+            }
+            
+            if (allLeaders.length === 0) return null
 
-          {/* Additional Leaders Row if more than 3 */}
-          {otherLeaders.length > 0 && (
-            <>
-              <div className="mb-8">
-                <h2 className="text-3xl font-bold text-mayor-navy text-center font-amharic mb-4">
-                  {lang === 'am' ? 'ተጨማሪ አመራሮች' : 'Additional Leaders'}
-                </h2>
-                <div className="w-24 h-1 bg-mayor-royal-blue mx-auto rounded-full"></div>
+            // Use static category title if available, otherwise use dynamic
+            const categoryTitle = staticCategory 
+              ? { am: staticCategory.title_am, en: staticCategory.title_en }
+              : category 
+                ? { am: category.title_am, en: category.title_en }
+                : null
+
+            if (!categoryTitle) return null
+
+            return (
+              <div key={categoryKey} className={categoryIndex > 0 ? 'mt-16' : ''}>
+                {/* Category Title */}
+                <div className="mb-8">
+                  <h2 className="text-4xl font-bold text-mayor-navy text-center font-amharic mb-4">
+                    {lang === 'am' ? categoryTitle.am : categoryTitle.en}
+                  </h2>
+                  <div className="w-32 h-1.5 bg-mayor-royal-blue mx-auto rounded-full"></div>
+                </div>
+
+                {/* Leaders Grid */}
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {allLeaders.map((leader) => (
+                    <LeaderPageCard key={leader.id} official={leader} />
+                  ))}
+                </div>
               </div>
-              <div className="grid md:grid-cols-3 gap-8">
-                {otherLeaders.map((official) => (
-                  <LeaderPageCard key={official.id} official={official} />
-                ))}
-              </div>
-            </>
-          )}
+            )
+          })}
         </div>
       </div>
     </div>
   )
 }
-
