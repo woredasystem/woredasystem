@@ -472,6 +472,13 @@ export function generateComplaintPDF(complaint, lang = 'am') {
           ` : ''}
         </div>
         
+        ${complaint.complainant_signature ? `
+        <div class="divider"></div>
+        <div class="section">
+          <div class="section-title">${lang === 'am' ? '8) የቅሬታው/አቤቱታ አቅራቢው ሙሉ ስም' : '8) Complainant/Appellant Full Name'}</div>
+          <div class="info-value">${complaint.complainant_signature}</div>
+        </div>
+        ` : ''}
         
         ${(complaint.appeal_content || complaint.properly_investigated !== null || complaint.investigation_findings || complaint.summary_response) ? `
         <div class="divider"></div>
@@ -548,7 +555,7 @@ export function generateComplaintPDF(complaint, lang = 'am') {
           </div>
           ${complaint.expert_investigation_date ? `
           <div class="info-row">
-            <div class="info-label">${lang === 'am' ? 'የጣርታ ቀን:' : 'Investigation Date:'}</div>
+            <div class="info-label">${lang === 'am' ? 'የተጣራበት ቀን:' : 'Investigation Date:'}</div>
             <div class="info-value">${formatDateOnly(complaint.expert_investigation_date)}</div>
           </div>
           ` : ''}
