@@ -481,9 +481,8 @@ export function generateComplaintPDF(complaint, lang = 'am') {
         ` : ''}
         
         ${(complaint.appeal_content || complaint.properly_investigated !== null || complaint.investigation_findings || complaint.summary_response) ? `
-        <div style="page-break-before: always; break-before: page; height: 0; margin: 0; padding: 0;"></div>
         <div class="divider"></div>
-        <div class="form-break" style="page-break-before: always; break-before: page;">
+        <div class="form-break">
           <div class="section">
             <div class="section-title">${lang === 'am' ? 'ቅፅ-02: የቅሬታ/አቤቱታ መልስ መስጪያ' : 'Form-02: Complaint/Appeal Response Provider'}</div>
           
