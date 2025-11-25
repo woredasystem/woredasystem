@@ -472,13 +472,6 @@ export function generateComplaintPDF(complaint, lang = 'am') {
           ` : ''}
         </div>
         
-        ${complaint.complainant_signature ? `
-        <div class="divider"></div>
-        <div class="section">
-          <div class="section-title">${lang === 'am' ? '8) የቅሬታው/አቤቱታ አቅራቢው ሙሉ ስም ፊርማ' : '8) Complainant/Appellant Full Name and Signature'}</div>
-          <div class="info-value">${complaint.complainant_signature}</div>
-        </div>
-        ` : ''}
         
         ${(complaint.appeal_content || complaint.properly_investigated !== null || complaint.investigation_findings || complaint.summary_response) ? `
         <div class="divider"></div>
