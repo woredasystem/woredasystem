@@ -285,38 +285,198 @@ export const services = {
       en: 'Trade Office'
     },
     items: [
+      // የንግድ ግብይት ማስፋፊያ ቡድን - Trade Promotion Team
       {
         name: {
-          am: 'ኢንስፔክሽን - ንግድ ፈቃድ ለማውጣት',
-          en: 'Inspection - Business License'
+          am: 'በንግድ ዘርፍ ለተሰማሩ የህብረተሰብ ክፍሎች ግንዛቤ ማስጨበጫ ሙያዊ ምክክር ቴክኒካል ሙያዊምክር የቴክኒክ ድጋፍ ስልጠና መስጠት',
+          en: 'Providing awareness raising professional consultation, technical professional consultation, technical support and training for community members engaged in trade sector'
         },
         requirements: {
-          am: 'ማመልከቻ፣ የማነነት መታወቂያ፣ የንግድ ፈቃዱ የሚወጣበት ክርታ ቁጥርና አይነት (መኖሪያ: ቅይጥ እና ንግድ)፣ የግብር ከፋይ ቁጥር (TIN Number)',
-          en: 'Application, Personal ID, Map Number and Type (Residential: Mixed and Business), TIN Number'
+          am: 'በንግድ ዘርፍ ለተሰማሩ የህብረተሰብ ክፍሎች ግንዛቤ ማስጨበጫ ሙያዊ ምክክር ቴክኒካል ሙያዊምክር የቴክኒክ ድጋፍ ስልጠና መስጠት',
+          en: 'Providing awareness raising professional consultation, technical professional consultation, technical support and training for community members engaged in trade sector'
         },
-        fee: 0
+        fee: 0,
+        standard: {
+          am: 'በስታንዳርድ መሰረት',
+          en: 'Based on standard'
+        },
+        serviceGroup: {
+          am: 'የንግድ ግብይት ማስፋፊያ ቡድን',
+          en: 'Trade Promotion Team'
+        }
       },
       {
         name: {
-          am: 'ንግድ ግብይት - ገቢና ትስስር መፍጠር (እሁድ ገበያ)',
-          en: 'Trade Transaction - Income and Registration Creation (Sunday Market)'
+          am: 'የዘርፍ ማህበራትን እና ነጋዴ ማህበራትን ይደግፋል ያጠነክራል',
+          en: 'Supporting and strengthening sector associations and merchant associations'
         },
         requirements: {
-          am: 'ማመልከቻ፣ ግንዛቤ መውሰድ፣ ድንኳን ማዘጋጀት፣ በተቀመጠው የዋጋ መጠን ማቅረብ ፈቃደኛ መሆን፣ ምርቱን አርብ ቀድሞ 10 መዘማስገባት ፈቃደኛ፣ እሁድ ማታ ድንኳን ማውረድና ቦታውን አፅድቶ ለመሄድ ፍቃደኛ መሆን',
-          en: 'Application, Understanding, Shop Preparation, Willingness to pay at set price, Willingness to register product before Friday 10, Willingness to remove shop Sunday evening and clean the area'
+          am: 'የዘርፍ ማህበራትን እና ነጋዴ ማህበራትን ይደግፋል ያጠነክራል',
+          en: 'Supporting and strengthening sector associations and merchant associations'
         },
-        fee: 0
+        fee: 0,
+        standard: {
+          am: 'በስታንዳርድ መሰረት',
+          en: 'Based on standard'
+        },
+        serviceGroup: {
+          am: 'የንግድ ግብይት ማስፋፊያ ቡድን',
+          en: 'Trade Promotion Team'
+        }
       },
       {
         name: {
-          am: 'ሸማቾች መብት ጥበቃ',
-          en: 'Consumer Rights Protection'
+          am: 'የገበያ ትስስር መፍጠር',
+          en: 'Creating market linkage'
         },
         requirements: {
-          am: 'ቅሬታን በ8588 እንዲያቀርብ ግንዛቤ መፍጠር',
-          en: 'Understanding to submit complaint via 8588'
+          am: 'የገበያ ትስስር መፍጠር',
+          en: 'Creating market linkage'
         },
-        fee: 0
+        fee: 0,
+        standard: {
+          am: 'በስታንዳርድ መሰረት',
+          en: 'Based on standard'
+        },
+        serviceGroup: {
+          am: 'የንግድ ግብይት ማስፋፊያ ቡድን',
+          en: 'Trade Promotion Team'
+        }
+      },
+      // በንግድ ኢንስፔክሽን ሬጉላቶሪ ቡድን - Trade Inspection Regulatory Team
+      {
+        name: {
+          am: 'በንግድ ድርጅት ላይ ቁጥጥርና ክትትል ማድረግ',
+          en: 'Conducting control and monitoring on trade organizations'
+        },
+        requirements: {
+          am: 'በንግድ ድርጅት ላይ ቁጥጥርና ክትትል ማድረግ',
+          en: 'Conducting control and monitoring on trade organizations'
+        },
+        fee: 0,
+        standard: {
+          am: 'በስታንዳርድ መሰረት',
+          en: 'Based on standard'
+        },
+        serviceGroup: {
+          am: 'በንግድ ኢንስፔክሽን ሬጉላቶሪ ቡድን',
+          en: 'Trade Inspection Regulatory Team'
+        }
+      },
+      {
+        name: {
+          am: 'በህጋዊ የንግድ አሰራር ዙርያ ስልጠና መስጠት እና ግንዛቤ ማስጨበጥ',
+          en: 'Providing training and raising awareness on legal trade practices'
+        },
+        requirements: {
+          am: 'በህጋዊ የንግድ አሰራር ዙርያ ስልጠና መስጠት እና ግንዛቤ ማስጨበጥ',
+          en: 'Providing training and raising awareness on legal trade practices'
+        },
+        fee: 0,
+        standard: {
+          am: 'በስታንዳርድ መሰረት',
+          en: 'Based on standard'
+        },
+        serviceGroup: {
+          am: 'በንግድ ኢንስፔክሽን ሬጉላቶሪ ቡድን',
+          en: 'Trade Inspection Regulatory Team'
+        }
+      },
+      {
+        name: {
+          am: 'ከሸማች ማህበረሰብ ጥቆማና ቀረታ መቀበልና ምላሽ መስጠት',
+          en: 'Receiving complaints and feedback from consumer community and responding'
+        },
+        requirements: {
+          am: 'ከሸማች ማህበረሰብ ጥቆማና ቀረታ መቀበልና ምላሽ መስጠት',
+          en: 'Receiving complaints and feedback from consumer community and responding'
+        },
+        fee: 0,
+        standard: {
+          am: 'በስታንዳርድ መሰረት',
+          en: 'Based on standard'
+        },
+        serviceGroup: {
+          am: 'በንግድ ኢንስፔክሽን ሬጉላቶሪ ቡድን',
+          en: 'Trade Inspection Regulatory Team'
+        }
+      },
+      // የሸማቾች መብት ጥበቃ ቡድን - Consumer Rights Protection Team
+      {
+        name: {
+          am: 'የሸማቹን እና የንግዱን ማህበረሰብ በህግ ማዕቀፍ ግንዛቤ መፍጠር',
+          en: 'Creating legal framework awareness for consumer and business community'
+        },
+        requirements: {
+          am: 'የሸማቹን እና የንግዱን ማህበረሰብ በህግ ማዕቀፍ ግንዛቤ መፍጠር',
+          en: 'Creating legal framework awareness for consumer and business community'
+        },
+        fee: 0,
+        standard: {
+          am: 'ስታንዳርድ ያልወጣለቸው',
+          en: 'Not standardized'
+        },
+        serviceGroup: {
+          am: 'የሸማቾች መብት ጥበቃ ቡድን',
+          en: 'Consumer Rights Protection Team'
+        }
+      },
+      {
+        name: {
+          am: 'ከጤና መስፈርቶች ወይም ከደንቦች ጋር የማይጣጣሙ ሀሰተኛ አሳሳች የንግድ ማስታወቂያዎችን ቅድመ መከላከል ማረም',
+          en: 'Preventing and correcting false and misleading trade advertisements that do not comply with health requirements or regulations'
+        },
+        requirements: {
+          am: 'ከጤና መስፈርቶች ወይም ከደንቦች ጋር የማይጣጣሙ ሀሰተኛ አሳሳች የንግድ ማስታወቂያዎችን ቅድመ መከላከል ማረም',
+          en: 'Preventing and correcting false and misleading trade advertisements that do not comply with health requirements or regulations'
+        },
+        fee: 0,
+        standard: {
+          am: 'ስታንዳርድ ያልወጣለቸው',
+          en: 'Not standardized'
+        },
+        serviceGroup: {
+          am: 'የሸማቾች መብት ጥበቃ ቡድን',
+          en: 'Consumer Rights Protection Team'
+        }
+      },
+      {
+        name: {
+          am: 'ሸማቹን ማህበረሰብ ጥቅም የሚጎዱ ጊዜ ያለፈባቸው ምርቶች እንዲሰባሰቡ ማድረግ',
+          en: 'Ensuring expired products harmful to consumer community are collected'
+        },
+        requirements: {
+          am: 'ሸማቹን ማህበረሰብ ጥቅም የሚጎዱ ጊዜ ያለፈባቸው ምርቶች እንዲሰባሰቡ ማድረግ',
+          en: 'Ensuring expired products harmful to consumer community are collected'
+        },
+        fee: 0,
+        standard: {
+          am: 'ስታንዳርድ ያልወጣለቸው',
+          en: 'Not standardized'
+        },
+        serviceGroup: {
+          am: 'የሸማቾች መብት ጥበቃ ቡድን',
+          en: 'Consumer Rights Protection Team'
+        }
+      },
+      {
+        name: {
+          am: 'የሲቪል ማህበራትን መደገፍና ማብቃት ማደራጀት',
+          en: 'Supporting and organizing civil society organizations'
+        },
+        requirements: {
+          am: 'የሲቪል ማህበራትን መደገፍና ማብቃት ማደራጀት',
+          en: 'Supporting and organizing civil society organizations'
+        },
+        fee: 0,
+        standard: {
+          am: 'ስታንዳርድ ያልወጣለቸው',
+          en: 'Not standardized'
+        },
+        serviceGroup: {
+          am: 'የሸማቾች መብት ጥበቃ ቡድን',
+          en: 'Consumer Rights Protection Team'
+        }
       }
     ]
   },

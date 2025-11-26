@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { getDepartmentDisplayName } from '../utils/routing'
 import { gregorianToEthiopian, ethiopianMonths, ethiopianMonthsEn } from '../utils/ethiopianCalendar'
 import { logout } from '../utils/auth'
-import { ArrowLeft, BarChart3, AlertTriangle, Users, Calendar, LogOut, Edit, Download, FileText, FileSpreadsheet, TrendingUp, Filter, Search } from 'lucide-react'
+import { ArrowLeft, BarChart3, AlertTriangle, Users, Calendar, LogOut, Edit, Download, FileText, FileSpreadsheet, TrendingUp, Filter, Search, Trash2 } from 'lucide-react'
 import AppointmentReschedule from '../components/AppointmentReschedule'
 import { generateComplaintPDF } from '../utils/pdfGenerator'
 import { exportComplaintsToCSV, exportAppointmentsToCSV, exportComplaintsToPDF, exportAppointmentsToPDF } from '../utils/exportUtils'
@@ -20,6 +20,9 @@ export default function AdminPortal({ onBack }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [departmentFilter, setDepartmentFilter] = useState('all')
+  const [selectedComplaints, setSelectedComplaints] = useState(new Set())
+  const [selectedAppointments, setSelectedAppointments] = useState(new Set())
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState({ show: false, type: null, count: 0, all: false })
   
   const [stats, setStats] = useState({
     totalComplaints: 0,
@@ -228,6 +231,183 @@ export default function AdminPortal({ onBack }) {
     return statusMap[status] || status
   }
 
+  // Handle complaint selection
+  const handleComplaintSelect = (complaintId) => {
+    const newSelected = new Set(selectedComplaints)
+    if (newSelected.has(complaintId)) {
+      newSelected.delete(complaintId)
+    } else {
+      newSelected.add(complaintId)
+    }
+    setSelectedComplaints(newSelected)
+  }
+
+  // Handle select all complaints
+  const handleSelectAllComplaints = () => {
+    if (selectedComplaints.size === filteredComplaints.length) {
+      setSelectedComplaints(new Set())
+    } else {
+      setSelectedComplaints(new Set(filteredComplaints.map(c => c.id)))
+    }
+  }
+
+  // Handle appointment selection
+  const handleAppointmentSelect = (appointmentId) => {
+    const newSelected = new Set(selectedAppointments)
+    if (newSelected.has(appointmentId)) {
+      newSelected.delete(appointmentId)
+    } else {
+      newSelected.add(appointmentId)
+    }
+    setSelectedAppointments(newSelected)
+  }
+
+  // Handle select all appointments
+  const handleSelectAllAppointments = () => {
+    if (selectedAppointments.size === filteredAppointments.length) {
+      setSelectedAppointments(new Set())
+    } else {
+      setSelectedAppointments(new Set(filteredAppointments.map(a => a.id)))
+    }
+  }
+
+  // Delete selected complaints
+  const deleteSelectedComplaints = async () => {
+    if (selectedComplaints.size === 0) return
+    
+    try {
+      const ids = Array.from(selectedComplaints)
+      const { error } = await supabase
+        .from('complaints')
+        .delete()
+        .in('id', ids)
+
+      if (error) throw error
+
+      setSelectedComplaints(new Set())
+      fetchData()
+      
+      alert(lang === 'am' 
+        ? `${ids.length} ቅሬታ(ዎች) በተሳካ ሁኔታ ተሰርዘዋል` 
+        : `${ids.length} complaint(s) deleted successfully`)
+    } catch (error) {
+      console.error('Error deleting complaints:', error)
+      alert(lang === 'am' ? 'ስህተት ተፈጥሯል' : 'An error occurred')
+    }
+  }
+
+  // Delete all complaints
+  const deleteAllComplaints = async () => {
+    try {
+      // Delete all filtered complaints
+      const ids = filteredComplaints.map(c => c.id)
+      if (ids.length === 0) return
+
+      const { error } = await supabase
+        .from('complaints')
+        .delete()
+        .in('id', ids)
+
+      if (error) throw error
+
+      setSelectedComplaints(new Set())
+      fetchData()
+      
+      alert(lang === 'am' 
+        ? `ሁሉም ${ids.length} ቅሬታዎች በተሳካ ሁኔታ ተሰርዘዋል` 
+        : `All ${ids.length} complaints deleted successfully`)
+    } catch (error) {
+      console.error('Error deleting all complaints:', error)
+      alert(lang === 'am' ? 'ስህተት ተፈጥሯል' : 'An error occurred')
+    }
+  }
+
+  // Delete selected appointments
+  const deleteSelectedAppointments = async () => {
+    if (selectedAppointments.size === 0) return
+    
+    try {
+      const ids = Array.from(selectedAppointments)
+      const { error } = await supabase
+        .from('appointments')
+        .delete()
+        .in('id', ids)
+
+      if (error) throw error
+
+      setSelectedAppointments(new Set())
+      fetchData()
+      
+      alert(lang === 'am' 
+        ? `${ids.length} ቀጠሮ(ዎች) በተሳካ ሁኔታ ተሰርዘዋል` 
+        : `${ids.length} appointment(s) deleted successfully`)
+    } catch (error) {
+      console.error('Error deleting appointments:', error)
+      alert(lang === 'am' ? 'ስህተት ተፈጥሯል' : 'An error occurred')
+    }
+  }
+
+  // Delete all appointments
+  const deleteAllAppointments = async () => {
+    try {
+      // Delete all filtered appointments
+      const ids = filteredAppointments.map(a => a.id)
+      if (ids.length === 0) return
+
+      const { error } = await supabase
+        .from('appointments')
+        .delete()
+        .in('id', ids)
+
+      if (error) throw error
+
+      setSelectedAppointments(new Set())
+      fetchData()
+      
+      alert(lang === 'am' 
+        ? `ሁሉም ${ids.length} ቀጠሮዎች በተሳካ ሁኔታ ተሰርዘዋል` 
+        : `All ${ids.length} appointments deleted successfully`)
+    } catch (error) {
+      console.error('Error deleting all appointments:', error)
+      alert(lang === 'am' ? 'ስህተት ተፈጥሯል' : 'An error occurred')
+    }
+  }
+
+  // Show delete confirmation
+  const confirmDelete = (type, all = false) => {
+    const count = all 
+      ? (type === 'complaints' ? filteredComplaints.length : filteredAppointments.length)
+      : (type === 'complaints' ? selectedComplaints.size : selectedAppointments.size)
+    
+    if (count === 0) {
+      alert(lang === 'am' ? 'እባክዎ ለመሰረዝ የሚፈለጉትን ይምረጡ' : 'Please select items to delete')
+      return
+    }
+
+    setShowDeleteConfirm({ show: true, type, count, all })
+  }
+
+  // Execute delete after confirmation
+  const executeDelete = async () => {
+    const { type, all } = showDeleteConfirm
+    
+    if (type === 'complaints') {
+      if (all) {
+        await deleteAllComplaints()
+      } else {
+        await deleteSelectedComplaints()
+      }
+    } else if (type === 'appointments') {
+      if (all) {
+        await deleteAllAppointments()
+      } else {
+        await deleteSelectedAppointments()
+      }
+    }
+    
+    setShowDeleteConfirm({ show: false, type: null, count: 0, all: false })
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -287,7 +467,10 @@ export default function AdminPortal({ onBack }) {
               {lang === 'am' ? 'ትንተና' : 'Analytics'}
             </button>
             <button
-              onClick={() => setActiveTab('complaints')}
+              onClick={() => {
+                setActiveTab('complaints')
+                setSelectedComplaints(new Set())
+              }}
               className={`px-6 py-3 font-semibold font-amharic transition-colors border-b-2 ${
                 activeTab === 'complaints'
                   ? 'border-mayor-royal-blue text-mayor-royal-blue'
@@ -298,7 +481,10 @@ export default function AdminPortal({ onBack }) {
               {lang === 'am' ? 'ቅሬታዎች' : 'Complaints'} ({complaints.length})
             </button>
             <button
-              onClick={() => setActiveTab('appointments')}
+              onClick={() => {
+                setActiveTab('appointments')
+                setSelectedAppointments(new Set())
+              }}
               className={`px-6 py-3 font-semibold font-amharic transition-colors border-b-2 ${
                 activeTab === 'appointments'
                   ? 'border-mayor-royal-blue text-mayor-royal-blue'
@@ -471,6 +657,22 @@ export default function AdminPortal({ onBack }) {
                     ))}
                   </select>
                   <div className="flex gap-2">
+                    {selectedComplaints.size > 0 && (
+                      <button
+                        onClick={() => confirmDelete('complaints', false)}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-gov flex items-center gap-2 font-amharic"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        {lang === 'am' ? `የተመረጡትን ሰርዝ (${selectedComplaints.size})` : `Delete Selected (${selectedComplaints.size})`}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => confirmDelete('complaints', true)}
+                      className="px-4 py-2 bg-red-700 hover:bg-red-800 text-white rounded-gov flex items-center gap-2 font-amharic"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      {lang === 'am' ? 'ሁሉንም ሰርዝ' : 'Delete All'}
+                    </button>
                     <button
                       onClick={() => exportComplaintsToPDF(filteredComplaints, lang)}
                       className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-gov flex items-center gap-2 font-amharic"
@@ -495,6 +697,14 @@ export default function AdminPortal({ onBack }) {
                   <table className="w-full">
                     <thead className="bg-mayor-royal-blue text-white">
                       <tr>
+                        <th className="px-4 py-3 text-left font-semibold font-amharic text-sm w-12">
+                          <input
+                            type="checkbox"
+                            checked={filteredComplaints.length > 0 && selectedComplaints.size === filteredComplaints.length}
+                            onChange={handleSelectAllComplaints}
+                            className="w-4 h-4 cursor-pointer"
+                          />
+                        </th>
                         <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'ቲኬት' : 'Ticket'}</th>
                         <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'ስም' : 'Name'}</th>
                         <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'ስልክ' : 'Phone'}</th>
@@ -508,6 +718,14 @@ export default function AdminPortal({ onBack }) {
                     <tbody>
                       {filteredComplaints.map((complaint) => (
                         <tr key={complaint.id} className="border-b border-mayor-gray-divider hover:bg-mayor-gray-divider/20">
+                          <td className="px-4 py-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedComplaints.has(complaint.id)}
+                              onChange={() => handleComplaintSelect(complaint.id)}
+                              className="w-4 h-4 cursor-pointer"
+                            />
+                          </td>
                           <td className="px-4 py-3 font-mono text-sm">{complaint.ticket_number}</td>
                           <td className="px-4 py-3 font-amharic">{complaint.complainant_name}</td>
                           <td className="px-4 py-3">{complaint.complainant_phone}</td>
@@ -581,6 +799,22 @@ export default function AdminPortal({ onBack }) {
                     ))}
                   </select>
                   <div className="flex gap-2">
+                    {selectedAppointments.size > 0 && (
+                      <button
+                        onClick={() => confirmDelete('appointments', false)}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-gov flex items-center gap-2 font-amharic"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        {lang === 'am' ? `የተመረጡትን ሰርዝ (${selectedAppointments.size})` : `Delete Selected (${selectedAppointments.size})`}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => confirmDelete('appointments', true)}
+                      className="px-4 py-2 bg-red-700 hover:bg-red-800 text-white rounded-gov flex items-center gap-2 font-amharic"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      {lang === 'am' ? 'ሁሉንም ሰርዝ' : 'Delete All'}
+                    </button>
                     <button
                       onClick={() => exportAppointmentsToPDF(filteredAppointments, lang)}
                       className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-gov flex items-center gap-2 font-amharic"
@@ -605,6 +839,14 @@ export default function AdminPortal({ onBack }) {
                   <table className="w-full">
                     <thead className="bg-mayor-royal-blue text-white">
                       <tr>
+                        <th className="px-4 py-3 text-left font-semibold font-amharic text-sm w-12">
+                          <input
+                            type="checkbox"
+                            checked={filteredAppointments.length > 0 && selectedAppointments.size === filteredAppointments.length}
+                            onChange={handleSelectAllAppointments}
+                            className="w-4 h-4 cursor-pointer"
+                          />
+                        </th>
                         <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'ኮድ' : 'Code'}</th>
                         <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'ስም' : 'Name'}</th>
                         <th className="px-4 py-3 text-left font-semibold font-amharic text-sm">{lang === 'am' ? 'ስልክ' : 'Phone'}</th>
@@ -618,6 +860,14 @@ export default function AdminPortal({ onBack }) {
                     <tbody>
                       {filteredAppointments.map((appointment) => (
                         <tr key={appointment.id} className="border-b border-mayor-gray-divider hover:bg-mayor-gray-divider/20">
+                          <td className="px-4 py-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedAppointments.has(appointment.id)}
+                              onChange={() => handleAppointmentSelect(appointment.id)}
+                              className="w-4 h-4 cursor-pointer"
+                            />
+                          </td>
                           <td className="px-4 py-3 font-mono text-sm">{appointment.unique_code}</td>
                           <td className="px-4 py-3 font-amharic">{appointment.citizen_name}</td>
                           <td className="px-4 py-3">{appointment.citizen_phone}</td>
@@ -673,6 +923,40 @@ export default function AdminPortal({ onBack }) {
                 setSelectedAppointment(null)
               }}
             />
+          )}
+
+          {/* Delete Confirmation Modal */}
+          {showDeleteConfirm.show && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-gov-lg p-6 max-w-md w-full mx-4">
+                <h3 className="text-xl font-bold text-mayor-navy mb-4 font-amharic">
+                  {lang === 'am' ? 'ማረጋገጥ' : 'Confirm Delete'}
+                </h3>
+                <p className="text-mayor-navy mb-6 font-amharic">
+                  {showDeleteConfirm.all
+                    ? (lang === 'am' 
+                        ? `እርግጠኛ ነዎት ሁሉንም ${showDeleteConfirm.count} ${showDeleteConfirm.type === 'complaints' ? 'ቅሬታዎች' : 'ቀጠሮዎች'} መሰረዝ ይፈልጋሉ?`
+                        : `Are you sure you want to delete all ${showDeleteConfirm.count} ${showDeleteConfirm.type}?`)
+                    : (lang === 'am'
+                        ? `እርግጠኛ ነዎት ${showDeleteConfirm.count} ${showDeleteConfirm.type === 'complaints' ? 'ቅሬታ(ዎች)' : 'ቀጠሮ(ዎች)'} መሰረዝ ይፈልጋሉ?`
+                        : `Are you sure you want to delete ${showDeleteConfirm.count} selected ${showDeleteConfirm.type}?`)}
+                </p>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => setShowDeleteConfirm({ show: false, type: null, count: 0, all: false })}
+                    className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-mayor-navy rounded-gov font-amharic"
+                  >
+                    {lang === 'am' ? 'ተወው' : 'Cancel'}
+                  </button>
+                  <button
+                    onClick={executeDelete}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-gov font-amharic"
+                  >
+                    {lang === 'am' ? 'ሰርዝ' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>
