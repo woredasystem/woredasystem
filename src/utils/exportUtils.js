@@ -190,9 +190,13 @@ export function exportComplaintsToPDF(complaints, lang = 'am') {
         }
         .footer {
           margin-top: 30px;
+          padding-top: 15px;
+          padding-bottom: 10px;
           text-align: center;
-          font-size: 10px;
+          font-size: 12px;
           color: #666;
+          border-top: 1px solid #ddd;
+          page-break-inside: avoid;
         }
       </style>
     </head>
@@ -234,17 +238,17 @@ export function exportComplaintsToPDF(complaints, lang = 'am') {
         </tbody>
       </table>
       <div class="footer">
-        <p>${lang === 'am' ? 'ጠቅላላ ቅሬታዎች' : 'Total Complaints'}: ${complaints.length}</p>
+        <p style="margin: 5px 0; white-space: nowrap;">${lang === 'am' ? 'ጠቅላላ ቅሬታዎች' : 'Total Complaints'}: ${complaints.length}</p>
       </div>
     </body>
     </html>
   `
   
   const opt = {
-    margin: [10, 10, 10, 10],
+    margin: [10, 10, 15, 10],
     filename: `complaints_report_${new Date().toISOString().split('T')[0]}.pdf`,
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2 },
+    html2canvas: { scale: 2, useCORS: true },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
   }
   
@@ -299,9 +303,13 @@ export function exportAppointmentsToPDF(appointments, lang = 'am') {
         }
         .footer {
           margin-top: 30px;
+          padding-top: 15px;
+          padding-bottom: 10px;
           text-align: center;
-          font-size: 10px;
+          font-size: 12px;
           color: #666;
+          border-top: 1px solid #ddd;
+          page-break-inside: avoid;
         }
       </style>
     </head>
@@ -342,17 +350,17 @@ export function exportAppointmentsToPDF(appointments, lang = 'am') {
         </tbody>
       </table>
       <div class="footer">
-        <p>${lang === 'am' ? 'ጠቅላላ ቀጠሮዎች' : 'Total Appointments'}: ${appointments.length}</p>
+        <p style="margin: 5px 0; white-space: nowrap;">${lang === 'am' ? 'ጠቅላላ ቀጠሮዎች' : 'Total Appointments'}: ${appointments.length}</p>
       </div>
     </body>
     </html>
   `
   
   const opt = {
-    margin: [10, 10, 10, 10],
+    margin: [10, 10, 15, 10],
     filename: `appointments_report_${new Date().toISOString().split('T')[0]}.pdf`,
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2 },
+    html2canvas: { scale: 2, useCORS: true },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
   }
   
