@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 export default function LeadershipCarousel() {
   const { t, lang } = useLanguage()
   const [currentIndex, setCurrentIndex] = useState(0)
-  
+
   const itemsPerView = 3
   const totalLeaders = officials.length
 
@@ -29,69 +29,71 @@ export default function LeadershipCarousel() {
   }
 
   return (
-    <div className="my-16 bg-gradient-to-br from-mayor-deep-blue via-mayor-royal-blue to-mayor-highlight-blue py-16 rounded-gov-xl">
-      {/* Title Section with Blue Header */}
-      <div className="mb-10 text-center px-6">
-        <h2 className="text-3xl md:text-4xl font-bold mb-2 uppercase tracking-wide text-white">
-          {lang === 'am' ? 'አመራሮቻችንን ይገናኙ' : 'MEET OUR LEADERS'}
-        </h2>
-        <div className="w-24 h-1 bg-white/30 mx-auto rounded-full"></div>
-      </div>
-
-      {/* Carousel Container */}
-      <div className="relative max-w-6xl mx-auto px-8">
-        {/* Navigation Arrows */}
-        <button
-          onClick={goToPrevious}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white p-3 rounded-gov shadow-gov-md border border-mayor-gray-divider hover:bg-mayor-royal-blue transition-all group"
-          aria-label="Previous"
-        >
-          <ChevronLeft className="w-6 h-6 text-mayor-royal-blue group-hover:text-white transition-colors" />
-        </button>
-        
-        <button
-          onClick={goToNext}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white p-3 rounded-gov shadow-gov-md border border-mayor-gray-divider hover:bg-mayor-royal-blue transition-all group"
-          aria-label="Next"
-        >
-          <ChevronRight className="w-6 h-6 text-mayor-royal-blue group-hover:text-white transition-colors" />
-        </button>
-
-        {/* Cards Container */}
-        <div className="flex justify-center items-center gap-6 overflow-hidden min-h-[500px]">
-          {getVisibleOfficials().map((official, idx) => {
-            const isActive = idx === 1 // Center card is active
-            return (
-              <LeaderCard 
-                key={official.id} 
-                official={official} 
-                isActive={isActive}
-              />
-            )
-          })}
+    <div className="py-20 bg-white relative">
+      <div className="max-w-7xl mx-auto px-6">
+        {/* Title Section */}
+        <div className="mb-12 text-center">
+          <span className="text-mayor-royal-blue font-bold tracking-wider uppercase text-sm mb-2 block">
+            {lang === 'am' ? 'የስራ ኃላፊዎች' : 'Our Leadership'}
+          </span>
+          <h2 className="text-3xl md:text-4xl font-bold text-mayor-navy font-amharic">
+            {lang === 'am' ? 'የወረዳው አመራሮች' : 'Meet Our Leaders'}
+          </h2>
         </div>
 
-        {/* Navigation Dots - Show dots for all leaders */}
-        <div className="flex justify-center gap-2 mt-8">
-          {officials.map((official, index) => {
-            const isVisible = index >= currentIndex && index < currentIndex + itemsPerView
-            return (
-              <button
-                key={official.id}
-                onClick={() => {
-                  // Center the selected leader
-                  const newIndex = Math.max(0, Math.min(index - 1, totalLeaders - itemsPerView))
-                  setCurrentIndex(newIndex)
-                }}
-                className={`h-3 rounded-full transition-all ${
-                  isVisible
-                    ? 'bg-mayor-royal-blue w-8'
-                    : 'bg-mayor-gray-divider hover:bg-mayor-royal-blue/50 w-3'
-                }`}
-                aria-label={`Go to ${official.full_name_en}`}
-              />
-            )
-          })}
+        {/* Carousel Container */}
+        <div className="relative max-w-6xl mx-auto">
+          {/* Navigation Arrows */}
+          <button
+            onClick={goToPrevious}
+            className="absolute -left-4 lg:-left-12 top-1/2 -translate-y-1/2 z-10 bg-white p-4 rounded-full shadow-lg text-mayor-navy hover:bg-mayor-royal-blue hover:text-white transition-all duration-300 hover:scale-110 group"
+            aria-label="Previous"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+
+          <button
+            onClick={goToNext}
+            className="absolute -right-4 lg:-right-12 top-1/2 -translate-y-1/2 z-10 bg-white p-4 rounded-full shadow-lg text-mayor-navy hover:bg-mayor-royal-blue hover:text-white transition-all duration-300 hover:scale-110 group"
+            aria-label="Next"
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
+
+          {/* Cards Container */}
+          <div className="flex justify-center items-center gap-8 overflow-hidden py-10">
+            {getVisibleOfficials().map((official, idx) => {
+              const isActive = idx === 1 // Center card is active
+              return (
+                <LeaderCard
+                  key={official.id}
+                  official={official}
+                  isActive={isActive}
+                />
+              )
+            })}
+          </div>
+
+          {/* Navigation Dots */}
+          <div className="flex justify-center gap-3 mt-8">
+            {officials.map((official, index) => {
+              const isVisible = index >= currentIndex && index < currentIndex + itemsPerView
+              return (
+                <button
+                  key={official.id}
+                  onClick={() => {
+                    const newIndex = Math.max(0, Math.min(index - 1, totalLeaders - itemsPerView))
+                    setCurrentIndex(newIndex)
+                  }}
+                  className={`h-2 rounded-full transition-all duration-300 ${isVisible
+                      ? 'bg-mayor-royal-blue w-8'
+                      : 'bg-gray-200 hover:bg-mayor-royal-blue/50 w-2'
+                    }`}
+                  aria-label={`Go to ${official.full_name_en}`}
+                />
+              )
+            })}
+          </div>
         </div>
       </div>
     </div>

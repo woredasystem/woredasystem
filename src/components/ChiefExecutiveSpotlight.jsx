@@ -7,7 +7,7 @@ import felekeImage from '../assets/ፈለቀ ደውዬ.jpg'
 export default function ChiefExecutiveSpotlight() {
   const { t, lang } = useLanguage()
   const [currentIndex, setCurrentIndex] = useState(0)
-  
+
   // Get Chief Executive (CEO) from officials
   const chiefExecutive = officials.find(o => o.role_key === 'ceo')
 
@@ -62,124 +62,105 @@ export default function ChiefExecutiveSpotlight() {
   }
 
   return (
-    <div className="gov-card p-8 md:p-12 my-16 relative">
-      {/* Carousel Navigation Buttons */}
-      <button
-        onClick={prevLeader}
-        className="absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white p-3 rounded-full shadow-gov-md transition-all duration-300 hover:scale-110"
-        aria-label={lang === 'am' ? 'ያለፈ' : 'Previous'}
-      >
-        <ChevronLeft className="w-6 h-6 text-mayor-royal-blue" />
-      </button>
-      <button
-        onClick={nextLeader}
-        className="absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white p-3 rounded-full shadow-gov-md transition-all duration-300 hover:scale-110"
-        aria-label={lang === 'am' ? 'ቀጣይ' : 'Next'}
-      >
-        <ChevronRight className="w-6 h-6 text-mayor-royal-blue" />
-      </button>
+    <div className="relative py-20 overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-slate-50 skew-y-3 transform origin-top-left scale-110" />
 
-      {/* Carousel Indicators */}
-      <div className="absolute top-4 right-4 flex gap-2 z-10">
-        {leaders.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => setCurrentIndex(index)}
-            className={`w-2 h-2 rounded-full transition-all duration-300 ${
-              index === currentIndex ? 'bg-mayor-royal-blue w-8' : 'bg-mayor-gray-divider'
-            }`}
-            aria-label={`${lang === 'am' ? 'መረጃ' : 'Slide'} ${index + 1}`}
-          />
-        ))}
-      </div>
+      <div className="relative max-w-7xl mx-auto px-6">
+        <div className="grid lg:grid-cols-2 gap-16 items-center">
+          {/* Image Section */}
+          <div className="relative order-2 lg:order-1">
+            <div className="relative z-10 rounded-[3rem] overflow-hidden shadow-2xl border-8 border-white group">
+              <div className="aspect-[4/5] relative">
+                {currentLeader?.image_url ? (
+                  <img
+                    src={currentLeader.image_url}
+                    alt={lang === 'am' ? currentLeader.full_name_am : currentLeader.full_name_en}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-mayor-deep-blue to-mayor-royal-blue flex items-center justify-center">
+                    <span className="text-8xl text-white/20 font-bold">
+                      {currentLeader?.full_name_en?.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    </span>
+                  </div>
+                )}
 
-      <div className="grid md:grid-cols-2 gap-10 items-center">
-        {/* Photo Card - Vertical Rectangle */}
-        <div className="flex items-center justify-center">
-          <div className="relative w-80 md:w-96 lg:w-[28rem] h-[32rem] md:h-[36rem] lg:h-[40rem] rounded-gov-xl overflow-hidden shadow-gov-md border-2 border-mayor-gray-divider bg-gradient-to-br from-mayor-deep-blue to-mayor-royal-blue flex items-center justify-center transition-all duration-500">
-            {currentLeader?.image_url ? (
-              <img 
-                src={currentLeader.image_url} 
-                alt={lang === 'am' ? currentLeader.full_name_am : currentLeader.full_name_en}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="text-7xl text-white font-bold">
-                {currentLeader?.full_name_en?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'CA'}
+                {/* Overlay Gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-mayor-navy/80 via-transparent to-transparent opacity-60" />
+
+                {/* Floating Name Card */}
+                <div className="absolute bottom-8 left-8 right-8 bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-2xl text-white">
+                  <h3 className="text-2xl font-bold font-amharic mb-1">
+                    {lang === 'am' ? currentLeader.full_name_am : currentLeader.full_name_en}
+                  </h3>
+                  <p className="text-white/80 font-amharic">
+                    {lang === 'am' ? currentLeader.title_am : currentLeader.title_en}
+                  </p>
+                </div>
               </div>
-            )}
-            {/* Decorative Crown Icon */}
-            <div className="absolute top-4 right-4">
-              <Crown className="w-8 h-8 text-white/30" />
             </div>
-          </div>
-        </div>
-        
-        {/* Content Section */}
-        <div className="flex flex-col justify-center space-y-6">
-          <div className="border-l-4 border-mayor-royal-blue pl-4">
-            <h2 className="text-4xl md:text-5xl font-bold text-mayor-navy mb-3 font-amharic transition-all duration-500">
-              {lang === 'am' ? currentLeader.full_name_am : currentLeader.full_name_en}
-            </h2>
-            <p className="text-xl text-mayor-royal-blue mb-6 font-amharic font-semibold">
-              {lang === 'am' ? currentLeader.title_am : currentLeader.title_en}
-            </p>
-          </div>
 
-          <div className="space-y-4">
-            {currentLeader.speech[lang].map((paragraph, index) => (
-              <p 
-                key={index}
-                className={`text-mayor-navy/90 leading-relaxed font-amharic transition-all duration-500 ${
-                  index === 0 ? 'text-lg' : 'text-base'
-                }`}
+            {/* Decorative Elements */}
+            <div className="absolute -top-10 -left-10 w-40 h-40 bg-mayor-highlight-blue/20 rounded-full blur-3xl" />
+            <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-mayor-royal-blue/20 rounded-full blur-3xl" />
+
+            {/* Navigation Buttons */}
+            <div className="absolute top-1/2 -translate-y-1/2 -left-6 lg:-left-12 z-20">
+              <button
+                onClick={prevLeader}
+                className="p-4 bg-white rounded-full shadow-lg text-mayor-navy hover:bg-mayor-royal-blue hover:text-white transition-all duration-300 hover:scale-110 group"
               >
-                {paragraph}
-              </p>
-            ))}
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="absolute top-1/2 -translate-y-1/2 -right-6 lg:-right-12 z-20">
+              <button
+                onClick={nextLeader}
+                className="p-4 bg-white rounded-full shadow-lg text-mayor-navy hover:bg-mayor-royal-blue hover:text-white transition-all duration-300 hover:scale-110 group"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            </div>
           </div>
 
-          {/* Key Features */}
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-mayor-gray-divider">
-            <div className="flex items-center gap-3">
-              <div className="bg-mayor-royal-blue p-3 rounded-gov shadow-gov">
-                <Zap className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-mayor-navy font-semibold font-amharic text-sm">
-                  {lang === 'am' ? 'ፈጣን አገልግሎት' : 'Fast Service'}
-                </p>
-              </div>
+          {/* Content Section */}
+          <div className="order-1 lg:order-2 space-y-8">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-mayor-royal-blue/10 text-mayor-royal-blue font-medium text-sm">
+              <Crown className="w-4 h-4" />
+              {lang === 'am' ? 'የአመራር መልእክት' : 'Leadership Message'}
             </div>
-            <div className="flex items-center gap-3">
-              <div className="bg-mayor-highlight-blue p-3 rounded-gov shadow-gov">
-                <Users className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-mayor-navy font-semibold font-amharic text-sm">
-                  {lang === 'am' ? 'የህዝብ ተሳትፎ' : 'Public Engagement'}
-                </p>
-              </div>
+
+            <div className="relative">
+              <span className="absolute -top-8 -left-8 text-8xl text-mayor-royal-blue/10 font-serif">"</span>
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-mayor-navy leading-tight font-amharic relative z-10">
+                {lang === 'am' ? 'ለህዝብ አገልግሎት እና ለለውጥ ቁርጠኛ ነን' : 'Committed to Public Service and Transformation'}
+              </h2>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="bg-mayor-royal-blue p-3 rounded-gov shadow-gov">
-                <Target className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-mayor-navy font-semibold font-amharic text-sm">
-                  {lang === 'am' ? 'የተሻለ ውጤት' : 'Better Results'}
+
+            <div className="space-y-6 text-lg text-gray-600 leading-relaxed font-amharic">
+              {currentLeader.speech[lang].map((paragraph, index) => (
+                <p key={index} className={index === 0 ? 'text-mayor-navy font-medium' : ''}>
+                  {paragraph}
                 </p>
-              </div>
+              ))}
             </div>
-            <div className="flex items-center gap-3">
-              <div className="bg-mayor-highlight-blue p-3 rounded-gov shadow-gov">
-                <Award className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-mayor-navy font-semibold font-amharic text-sm">
-                  {lang === 'am' ? 'ከፍተኛ ጥራት' : 'High Quality'}
-                </p>
-              </div>
+
+            {/* Features Grid */}
+            <div className="grid grid-cols-2 gap-6 pt-8 border-t border-gray-100">
+              {[
+                { icon: Zap, label: lang === 'am' ? 'ፈጣን አገልግሎት' : 'Fast Service', color: 'text-amber-500', bg: 'bg-amber-50' },
+                { icon: Users, label: lang === 'am' ? 'የህዝብ ተሳትፎ' : 'Public Engagement', color: 'text-blue-500', bg: 'bg-blue-50' },
+                { icon: Target, label: lang === 'am' ? 'የተሻለ ውጤት' : 'Better Results', color: 'text-green-500', bg: 'bg-green-50' },
+                { icon: Award, label: lang === 'am' ? 'ከፍተኛ ጥራት' : 'High Quality', color: 'text-purple-500', bg: 'bg-purple-50' },
+              ].map((feature, idx) => (
+                <div key={idx} className="flex items-center gap-4 group cursor-default">
+                  <div className={`p-3 rounded-xl ${feature.bg} ${feature.color} group-hover:scale-110 transition-transform duration-300`}>
+                    <feature.icon className="w-6 h-6" />
+                  </div>
+                  <span className="font-semibold text-mayor-navy font-amharic">{feature.label}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>

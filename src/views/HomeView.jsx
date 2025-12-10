@@ -11,99 +11,113 @@ export default function HomeView({ onNavigate }) {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Hero Section */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-40 md:pt-32 pb-24 overflow-hidden">
-        {/* Background Image with Parallax Effect */}
-        <div 
-          className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
-          style={{
-            backgroundImage: `url(${heroBg})`,
-            backgroundAttachment: 'fixed',
-            backgroundPosition: 'center',
-            transform: 'scale(1.1)',
-            transition: 'transform 0.3s ease-out'
-          }}
-        />
-        
-        {/* Gradient Overlay - Multiple Layers for Depth */}
-        <div className="absolute inset-0 z-[1] bg-gradient-to-br from-mayor-deep-blue/85 via-mayor-royal-blue/80 to-mayor-highlight-blue/75" />
-        <div className="absolute inset-0 z-[1] bg-gradient-to-t from-mayor-navy/60 via-transparent to-transparent" />
-        
-        {/* Animated Pattern Overlay */}
-        <div className="absolute inset-0 z-[1] opacity-10">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `repeating-linear-gradient(
-              45deg,
-              transparent,
-              transparent 10px,
-              rgba(255, 255, 255, 0.1) 10px,
-              rgba(255, 255, 255, 0.1) 20px
-            )`
-          }} />
+      {/* Hero Section - Modern Split Layout */}
+      <section className="relative min-h-screen flex items-center px-6 pt-24 pb-12 overflow-hidden bg-slate-50">
+        {/* Background Elements */}
+        <div className="absolute inset-0 z-0">
+          <div className="absolute top-0 right-0 w-full lg:w-[45%] h-full bg-mayor-deep-blue clip-path-diagonal opacity-[0.98]" />
+          <div
+            className="absolute top-0 right-0 w-full h-full bg-cover bg-center opacity-10 mix-blend-overlay"
+            style={{ backgroundImage: `url(${heroBg})` }}
+          />
+
+          {/* Animated Shapes */}
+          <div className="absolute top-20 right-20 w-64 h-64 bg-mayor-royal-blue rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob" />
+          <div className="absolute top-40 right-40 w-64 h-64 bg-mayor-highlight-blue rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000" />
         </div>
-        
-        <div className="relative z-10 max-w-7xl mx-auto w-full">
-          {/* Hero Content - Split Layout */}
-          <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-center">
-            {/* Left Side - Welcome Content */}
-            <div className="text-left">
-              {/* Logo */}
-              <div className="mb-8">
-                <div className="bg-white p-4 rounded-gov-lg shadow-gov-md inline-block">
-                  <img src={logo} alt="Woreda 9 Logo" className="h-24 w-auto" />
-                </div>
-              </div>
-              
-              {/* Welcome Message in Amharic */}
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 font-amharic leading-tight">
-                {lang === 'am' ? 'እንኳን ደህና መጡ' : t('welcome')}
-              </h1>
-              <p className="text-xl md:text-2xl text-white/95 font-amharic mb-4 font-medium">
-                {lang === 'am' 
-                  ? 'አቃቂ ቃሊቲ ክፍለ ከተማ ወረዳ 9 አስተዳደር'
-                  : t('welcomeSubtitle')
-                }
-              </p>
-              <p className="text-base text-white/90 font-amharic leading-relaxed">
-                {lang === 'am' 
-                  ? 'አገልግሎቶችን ይመልከቱ፣ ቅሬታ ያስገቡ፣ ቀጠሮ ይዘዙ እና አመራሮቻችንን ይገናኙ'
-                  : 'Browse services, file complaints, book appointments, and meet our leaders'
-                }
-              </p>
+
+        <div className="relative z-10 max-w-7xl mx-auto w-full grid lg:grid-cols-[1.2fr_0.8fr] gap-12 items-center">
+          {/* Left Content - Welcome Message */}
+          <div className="text-left space-y-8">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 text-white lg:bg-mayor-deep-blue/5 lg:border-mayor-deep-blue/10 lg:text-mayor-deep-blue font-medium text-sm animate-fade-in-up">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              {lang === 'am' ? 'ዲጂታል አገልግሎት' : 'Digital Services Live'}
             </div>
 
-            {/* Right Side - Buttons Grid (2x2) */}
-            <div className="grid grid-cols-2 gap-4">
-              <HeroButton
-                type="services"
+            <h1 className="text-5xl lg:text-7xl font-bold text-white lg:text-mayor-navy leading-tight animate-fade-in-up delay-100">
+              {lang === 'am' ? (
+                <>
+                  የወረዳ 9 <br />
+                  <span className="text-blue-200 lg:text-transparent lg:bg-clip-text lg:bg-gradient-to-r lg:from-mayor-royal-blue lg:to-mayor-deep-blue">
+                    ዲጂታል አገልግሎት
+                  </span>
+                </>
+              ) : (
+                <>
+                  Woreda 9 <br />
+                  <span className="text-blue-200 lg:text-transparent lg:bg-clip-text lg:bg-gradient-to-r lg:from-mayor-royal-blue lg:to-mayor-deep-blue">
+                    Digital Service
+                  </span>
+                </>
+              )}
+            </h1>
+
+            <p className="text-xl text-blue-50 lg:text-gray-600 max-w-lg leading-relaxed animate-fade-in-up delay-200 font-amharic">
+              {lang === 'am'
+                ? 'የአቃቂ ቃሊቲ ክፍለ ከተማ ወረዳ 9 አስተዳደር አገልግሎቶችን በዲጂታል መንገድ ያግኙ። ፈጣን፣ ቀልጣፋ እና ተደራሽ።'
+                : 'Access Akaki Kality Sub-City Woreda 9 administration services digitally. Fast, efficient, and accessible.'
+              }
+            </p>
+
+            <div className="flex flex-wrap gap-4 animate-fade-in-up delay-300">
+              <button
                 onClick={() => onNavigate('services')}
-                label={t('services')}
-              />
-              <HeroButton
-                type="complaints"
-                onClick={() => onNavigate('complaints')}
-                label={t('complaints')}
-              />
-              <HeroButton
-                type="appointments"
-                onClick={() => onNavigate('appointments')}
-                label={t('appointments')}
-              />
-              <HeroButton
-                type="leaders"
-                onClick={() => onNavigate('leaders')}
-                label={t('leaders')}
-              />
+                className="px-8 py-4 bg-mayor-deep-blue text-white rounded-xl font-semibold shadow-lg shadow-mayor-deep-blue/30 hover:bg-mayor-navy hover:scale-105 transition-all duration-300"
+              >
+                {lang === 'am' ? 'አገልግሎቶችን ይጀምሩ' : 'Get Started'}
+              </button>
+              <button className="px-8 py-4 bg-white/10 text-white border border-white/20 rounded-xl font-semibold hover:bg-white/20 lg:bg-white lg:text-mayor-deep-blue lg:border-gray-200 lg:hover:bg-gray-50 lg:hover:border-mayor-deep-blue/30 transition-all duration-300">
+                {lang === 'am' ? 'ስለ እኛ' : 'Learn More'}
+              </button>
             </div>
           </div>
-        </div>
 
-        {/* Creative Blue Brand Divider - Diagonal Cut */}
-        <div className="absolute bottom-0 left-0 right-0 z-20">
-          <svg className="w-full h-24" viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-            <path d="M0 120L0 80L1440 0L1440 120Z" fill="white"/>
-            <path d="M0 100L0 60L1440 0L1440 100Z" fill="#1565C0" fillOpacity="0.1"/>
-          </svg>
+          {/* Right Content - Service Dashboard Card */}
+          <div className="relative animate-fade-in-up delay-400">
+            {/* Glass Card */}
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-8 rounded-3xl shadow-2xl relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/5 opacity-100" />
+
+              <div className="relative z-10">
+                <div className="flex justify-between items-center mb-8 text-white">
+                  <div>
+                    <h3 className="text-2xl font-bold font-amharic">
+                      {lang === 'am' ? 'ፈጣን አገልግሎቶች' : 'Quick Services'}
+                    </h3>
+                    <p className="text-white/70 text-sm">
+                      {lang === 'am' ? 'የሚፈልጉትን አገልግሎት ይምረጡ' : 'Select a service to proceed'}
+                    </p>
+                  </div>
+                  <div className="p-2 bg-white/10 rounded-lg">
+                    <img src={logo} alt="Logo" className="w-8 h-8 opacity-80" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <HeroButton
+                    type="services"
+                    onClick={() => onNavigate('services')}
+                    label={t('services')}
+                  />
+                  <HeroButton
+                    type="complaints"
+                    onClick={() => onNavigate('complaints')}
+                    label={t('complaints')}
+                  />
+                  <HeroButton
+                    type="appointments"
+                    onClick={() => onNavigate('appointments')}
+                    label={t('appointments')}
+                  />
+                  <HeroButton
+                    type="leaders"
+                    onClick={() => onNavigate('leaders')}
+                    label={t('leaders')}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -135,7 +149,7 @@ export default function HomeView({ onNavigate }) {
             </div>
             <div className="text-center md:text-right">
               <p className="text-sm text-white/70 font-amharic">
-                {lang === 'am' 
+                {lang === 'am'
                   ? `© ${new Date().getFullYear()} ወረዳ 9. ሁሉም መብቶች የተጠበቁ ናቸው።`
                   : `© ${new Date().getFullYear()} Woreda 9. All rights reserved.`
                 }
